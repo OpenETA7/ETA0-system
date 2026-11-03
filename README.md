@@ -1,6 +1,6 @@
-# Variant: `bbox`
+# Variant: `bbox-mark-point`
 
-本分支从 `main` 独立派生；查询接口和示例见 [docs/visual-query.md](docs/visual-query.md)。
+本分支整合 bbox 与 mark-point，在同一观测中可调用任一种查询，共享查询额度且不执行物理动作。查询接口和示例见 [docs/visual-query.md](docs/visual-query.md)。
 
 # Minimal Robot Harness
 
@@ -30,6 +30,7 @@ Benchmark.execute() ── measured feedback ── native success ── repeat
 | `tcp_overlay.py` | 通用投影/绘图；可单文件使用，无仿真引擎依赖 |
 | `tcp_overlay_adapter.py` | 已有 LIBERO/RoboCasa session 与历史 metadata 的桥接 |
 | `examples/` | 两个 benchmark 的真实历史腕部图、标定 JSON、overlay，以及离线闭环示例 |
+| `visual_query.py` | 框选统计与精确像素回投影，两种查询共用标定与深度接口 |
 | `tests/` | 历史投影回归、边界条件、动作执行与成功判定测试 |
 | `docs/harness.md` | 原实验配方、动作协议和接入边界 |
 

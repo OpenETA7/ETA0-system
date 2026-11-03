@@ -11,9 +11,10 @@ from PIL import Image  # noqa: E402
 
 from harness import Observation  # noqa: E402
 from tcp_overlay import CameraCalibration, RobotGeometry  # noqa: E402
-from visual_query import QUERY_STAGE, QueryView, query  # noqa: E402
+from visual_query import QUERY_STAGES, QueryView, query  # noqa: E402
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--query", choices=QUERY_STAGES, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--synthetic-depth", action="store_true",
                     help="Use a TEST constant 1m plane, never real recorded scene depth")
@@ -25,13 +26,13 @@ cam, robot = CameraCalibration(**snapshot["camera"]), RobotGeometry(**snapshot["
 obs = Observation(rgb, rgb, cam, robot, {})
 if args.synthetic_depth:
     obs.query_views["wrist"] = QueryView(rgb, cam, np.ones((rgb.height, rgb.width)))
-action = dict(stage=QUERY_STAGE, observation_id=robot.observation_id, camera="wrist")
-action.update({"bbox_xyxy_px": [120, 180, 300, 350]} if QUERY_STAGE == "bbox"
+action = dict(stage=args.query, observation_id=robot.observation_id, camera="wrist")
+action.update({"bbox_xyxy_px": [120, 180, 300, 350]} if args.query == "bbox"
               else {"point_xy_px": [240, 260]})
 image, feedback = query(action, obs)
 feedback["example_depth_source"] = "SYNTHETIC CONSTANT PLANE" if args.synthetic_depth else "none"
 args.output.parent.mkdir(parents=True, exist_ok=True)
 image.save(args.output)
 args.output.with_suffix(".json").write_text(json.dumps(feedback, indent=2, allow_nan=False))
-print(json.dumps({"stage": QUERY_STAGE, "geometry_valid": feedback["geometry_valid"],
+print(json.dumps({"stage": args.query, "geometry_valid": feedback["geometry_valid"],
                   "synthetic_depth": args.synthetic_depth, "executed_ticks": 0}))

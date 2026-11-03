@@ -17,7 +17,7 @@ from typing import Protocol
 from PIL import Image
 
 from tcp_overlay import CameraCalibration, RobotGeometry, render_tcp_overlay
-from visual_query import QUERY_NOTICE, QUERY_STAGE, query
+from visual_query import QUERY_NOTICE, QUERY_STAGES, query
 
 
 @dataclass
@@ -147,7 +147,7 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                     if set(action) != {"stage", "observation_id"}:
                         raise ValueError("finish requires exactly stage and observation_id")
                     return finish("model_finish")
-                if action.get("stage") == QUERY_STAGE:
+                if action.get("stage") in QUERY_STAGES:
                     if local_queries >= max_queries_per_observation:
                         raise ValueError("query budget for this observation exhausted")
                     annotated, query_feedback = query(action, observation)
@@ -158,7 +158,7 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                 event("rejection", error=str(error), executed=False)
                 messages.append({"role": "user", "content": [text("Rejected: " + str(error))]})
                 continue
-            if action.get("stage") == QUERY_STAGE:
+            if action.get("stage") in QUERY_STAGES:
                 queries += 1
                 local_queries += 1
                 query_path = folder / f"query-{local_queries:02d}.png"
