@@ -1,3 +1,7 @@
+# Variant: `bbox`
+
+本分支从 `main` 独立派生；查询接口和示例见 [docs/visual-query.md](docs/visual-query.md)。
+
 # Minimal Robot Harness
 
 一个最小的机器人多模态闭环：**观察 → Kimi/其他 policy → 校验动作 → 执行 → 再观察**。
