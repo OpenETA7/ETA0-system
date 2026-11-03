@@ -10,13 +10,14 @@ from __future__ import annotations
 import base64
 import copy
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
 from PIL import Image
 
 from tcp_overlay import CameraCalibration, RobotGeometry, render_tcp_overlay
+from visual_query import QUERY_NOTICE, QUERY_STAGE, query
 
 
 @dataclass
@@ -26,6 +27,7 @@ class Observation:
     wrist_camera: CameraCalibration
     robot: RobotGeometry
     state: dict  # Measured orientation, gripper width, previous execution, etc.
+    query_views: dict = field(default_factory=dict)  # Optional synchronized QueryView per camera.
 
 
 class Benchmark(Protocol):
@@ -61,7 +63,7 @@ def parse_action(content):
 
 
 def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
-        max_calls=120, max_actions=40, keep_observations=8):
+        max_calls=120, max_actions=40, keep_observations=8, max_queries_per_observation=4):
     """Policy(messages) returns a complete chat-completions response.
 
     Caller resets the benchmark and closes it afterwards. Use a fresh output
@@ -70,12 +72,12 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
     has call/action bounds, not the original batch's wall-time/tick/memory guards.
     """
     if any(type(n) is not int or n <= 0 for n in
-           (max_calls, max_actions, keep_observations)):
+           (max_calls, max_actions, keep_observations, max_queries_per_observation)):
         raise ValueError("budgets must be positive integers")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=False)
-    messages = [{"role": "system", "content": action_prompt}]
-    calls = actions = rejected = 0
+    messages = [{"role": "system", "content": action_prompt + "\n" + QUERY_NOTICE}]
+    calls = actions = rejected = queries = local_queries = 0
     observation_messages = []
     observation = None
 
@@ -85,7 +87,7 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
 
     def finish(reason):
         result = dict(reason=reason, success=bool(benchmark.success()), calls=calls,
-                      actions=actions, rejections=rejected)
+                      actions=actions, rejections=rejected, queries=queries)
         (out / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
         return result
 
@@ -96,6 +98,7 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
             if calls >= max_calls or actions >= max_actions:
                 return finish("call_budget" if calls >= max_calls else "action_budget")
             if observation is None:
+                local_queries = 0
                 observation = benchmark.observe()
                 overlay, metadata = render_tcp_overlay(
                     observation.wrist_rgb, observation.wrist_camera, observation.robot
@@ -115,14 +118,15 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                     text("Wrist RGB with measured TCP overlay"),
                     image_part(wrist_path), text(context),
                 ]})
-                observation_messages.append(len(messages) - 1)
+                observation_messages.append([len(messages) - 1])
                 # Evict image bytes only. Text and returned reasoning remain.
-                for index in observation_messages[:-keep_observations]:
-                    messages[index]["content"] = [
-                        text("[Older image omitted; text retained.]")
-                        if part["type"] == "image_url" else part
-                        for part in messages[index]["content"]
-                    ]
+                for group in observation_messages[:-keep_observations]:
+                    for index in group:
+                        messages[index]["content"] = [
+                            text("[Older image omitted; text retained.]")
+                            if part["type"] == "image_url" else part
+                            for part in messages[index]["content"]
+                        ]
                 event("observation", context=context, folder=str(folder.name))
 
             response = policy(copy.deepcopy(messages))
@@ -143,11 +147,29 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                     if set(action) != {"stage", "observation_id"}:
                         raise ValueError("finish requires exactly stage and observation_id")
                     return finish("model_finish")
-                benchmark.validate_action(action, observation)
+                if action.get("stage") == QUERY_STAGE:
+                    if local_queries >= max_queries_per_observation:
+                        raise ValueError("query budget for this observation exhausted")
+                    annotated, query_feedback = query(action, observation)
+                else:
+                    benchmark.validate_action(action, observation)
             except (ValueError, TypeError, KeyError) as error:
                 rejected += 1
                 event("rejection", error=str(error), executed=False)
                 messages.append({"role": "user", "content": [text("Rejected: " + str(error))]})
+                continue
+            if action.get("stage") == QUERY_STAGE:
+                queries += 1
+                local_queries += 1
+                query_path = folder / f"query-{local_queries:02d}.png"
+                annotated.save(query_path)
+                event("visual_query", request=action, feedback=query_feedback,
+                      image=str(query_path.relative_to(out)), executed_ticks=0)
+                messages.append({"role": "user", "content": [
+                    text(query_feedback), image_part(query_path),
+                ]})
+                # Associate all query images with the same observation for eviction.
+                observation_messages[-1].append(len(messages) - 1)
                 continue
             # Deliberately outside the validation handler. A physical failure is
             # never converted into a zero-execution validation error or retried.
