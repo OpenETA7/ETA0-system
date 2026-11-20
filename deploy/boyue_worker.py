@@ -64,13 +64,13 @@ def run(options):
         subprocess.run(
             [
                 sys.executable,
-                str(src / "deploy/run_libero.py"),
+                str(src / options.get("entrypoint", "deploy/run_libero.py")),
                 "--boyue-config",
                 str(config),
                 *options["episode_args"],
             ],
             check=True,
-            timeout=2850,
+            timeout=None if options.get("entrypoint") else 2850,
         )
 
 

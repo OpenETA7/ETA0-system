@@ -1,5 +1,6 @@
 """YiCloud single-pod TP2 service. Uses the runtime pinned by the LIBERO evaluation."""
 
+import argparse
 import base64
 import json
 import os
@@ -18,9 +19,9 @@ MODEL = "eta0-system-fullmix-2500"
 PORT = 18680
 
 
-def serve():
+def serve(session=None, port=PORT):
     os.umask(0o077)
-    session = Path("/root/tests/inference/eta0-system") / socket.gethostname()
+    session = session or Path("/root/tests/inference/eta0-system") / socket.gethostname()
     session.mkdir(parents=True, exist_ok=True)
     key = secrets.token_urlsafe(32)
     for path in (TARGET, DRAFT):
@@ -30,8 +31,11 @@ def serve():
     if not (runtime / "READY.json").is_file():
         raise ValueError("incomplete runtime mirror")
     target = Path("/opt/eta0-dflash2")
-    if not target.exists():
+    try:
         target.symlink_to(runtime, target_is_directory=True)
+    except FileExistsError:
+        if not target.is_dir():
+            raise
     python = str(target / "serve/bin/python")
     env = {
         k: v
@@ -62,7 +66,9 @@ def serve():
         TOKENIZERS_PARALLELISM="false",
         NCCL_SOCKET_IFNAME="=eth0",
         VLLM_BATCH_INVARIANT="0",
-        VLLM_CACHE_ROOT="/tmp/eta0-system-vllm",
+        VLLM_CACHE_ROOT=f"/tmp/eta0-system-vllm-{port}",
+        VLLM_PORT=str(port + 100),
+        MASTER_PORT=str(port + 200),
     )
     subprocess.run(
         [
@@ -112,14 +118,14 @@ def serve():
         "--host",
         "0.0.0.0",
         "--port",
-        str(PORT),
+        str(port),
         "--speculative-config",
         json.dumps(dict(method="dflash", model=DRAFT, num_speculative_tokens=7)),
     ]
     with (session / "server.log").open("w") as log:
         proc = subprocess.Popen(args, env=env, stdout=log, stderr=subprocess.STDOUT)
     try:
-        url = f"http://127.0.0.1:{PORT}/v1"
+        url = f"http://127.0.0.1:{port}/v1"
         http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         deadline = time.monotonic() + 1800
         while proc.poll() is None and time.monotonic() < deadline:
@@ -182,7 +188,7 @@ def serve():
         if choice["finish_reason"] != "stop" or "red" not in answer.lower().split(".")[0].split():
             raise RuntimeError("visual canary failed: " + answer[:80])
         info = dict(
-            base_url=f"http://{socket.gethostbyname(socket.gethostname())}:{PORT}/v1",
+            base_url=f"http://{socket.gethostbyname(socket.gethostname())}:{port}/v1",
             model=MODEL,
             canary=answer,
             client_file=str(session / "client.json"),
@@ -197,4 +203,8 @@ def serve():
 
 
 if __name__ == "__main__":
-    serve()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--session", type=Path)
+    parser.add_argument("--port", type=int, default=PORT)
+    args = parser.parse_args()
+    serve(args.session, args.port)

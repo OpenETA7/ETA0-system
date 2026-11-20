@@ -228,7 +228,14 @@ def main():
         help="use one direct generation after a truncated thinking reply",
     )
     p.add_argument("--interactive", action="store_true", help="answer planner clarification")
+    p.add_argument(
+        "--upstream-base",
+        action="store_true",
+        help="use the frozen upstream module in the paired evaluation bundle",
+    )
     args = p.parse_args()
+    if args.upstream_base and args.mode != "base":
+        p.error("--upstream-base requires --mode base")
     deadline = time.monotonic() + args.wall_seconds
     config = json.loads(args.executor_client.read_text())
     lower = ChatEndpoint(
@@ -302,9 +309,7 @@ def main():
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("episode deadline expired during initialization")
-        result = run(
-            adapter,
-            execute,
+        options = dict(
             instruction=task,
             action_prompt=prompt,
             output_dir=args.output / "rollout",
@@ -312,10 +317,20 @@ def main():
             max_actions=args.max_actions,
             native_finish_feedback=True,
             bind_observation_ids=True,
-            hierarchy=hierarchy,
             context_compactor=compactor,
-            wall_time_s=remaining,
         )
+        if args.upstream_base:
+            from upstream_harness import run as upstream_run
+
+            try:
+                result = upstream_run(adapter, execute, **options)
+            except TimeoutError:
+                if time.monotonic() < deadline:
+                    raise
+                result = {"reason": "wall_time_budget", "success": bool(adapter.success())}
+                (args.output / "rollout/RESULT.json").write_text(json.dumps(result))
+        else:
+            result = run(adapter, execute, hierarchy=hierarchy, wall_time_s=remaining, **options)
         print(json.dumps(result, ensure_ascii=False))
     finally:
         (args.output / "cleanup.json").write_text(json.dumps(bounded_cleanup(adapter.close)))
