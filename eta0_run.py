@@ -1,48 +1,112 @@
 """Run the ETA0 hierarchy on the pinned LIBERO adapter, or run the executor alone."""
 
 import argparse
+import http.client
 import json
+import logging
 import os
+import random
+import socket
 import time
+import urllib.error
+import urllib.request
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 from harness import run
 from hierarchy import Hierarchy
 from rollout_context import HistoryCompactor, bounded_cleanup
 
+UPPER_RETRIES = 4
+
+
+def http_error_codes(response):
+    with response:
+        try:
+            error = json.loads(response.read(8192)).get("error")
+        except (ValueError, AttributeError, OSError, http.client.HTTPException):
+            return []
+    if not isinstance(error, dict):
+        return []
+    return [str(error[k]).lower() for k in ("code", "type") if error.get(k)]
+
+
+def retry_after_seconds(header):
+    if not header:
+        return 0
+    try:
+        return max(0, int(header))
+    except ValueError:
+        try:
+            return max(0, parsedate_to_datetime(header).timestamp() - time.time())
+        except (ValueError, TypeError, OverflowError, OSError):
+            return 0
+
 
 class ChatEndpoint:
-    def __init__(self, base_url, model, key, deadline, *, direct=False, allowed_models=()):
+    def __init__(
+        self, base_url, model, key, deadline, *, direct=False, allowed_models=(), retries=0
+    ):
         self.url = base_url.rstrip("/")
         self.model = model
         self.key = key
         self.deadline = deadline
         self.direct = direct
         self.allowed_models = allowed_models
+        self.retries = retries
 
     def post(self, url, payload):
-        import urllib.error
-        import urllib.request
-
         headers = {"Content-Type": "application/json", "User-Agent": "ETA0-System/0.1"}
         request = urllib.request.Request(url, json.dumps(payload).encode(), headers)
         if self.key:
             request.add_unredirected_header("Authorization", "Bearer " + self.key)
-        remaining = self.deadline - time.monotonic()
-        if remaining <= 0:
-            raise TimeoutError("episode wall time exhausted")
         handlers = [urllib.request.ProxyHandler({})] if self.direct else []
         opener = urllib.request.build_opener(*handlers)
-        try:
-            with opener.open(request, timeout=min(remaining, 600)) as response:
-                return json.load(response)
-        except urllib.error.HTTPError as exc:
+        for attempt in range(1, self.retries + 2):
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("episode wall time exhausted")
+            retry_after = 0
             try:
-                error = json.loads(exc.read(8192)).get("error", {})
-                code = str(error.get("type") or error.get("code") or "request_error")
-            except (ValueError, AttributeError):
-                code = "request_error"
-            raise RuntimeError(f"Model {self.model} returned HTTP {exc.code} ({code})") from None
+                with opener.open(
+                    request, timeout=min(remaining, 120 if self.retries else 600)
+                ) as r:
+                    return json.load(r)
+            except urllib.error.HTTPError as exc:
+                codes = http_error_codes(exc)
+                code = codes[0] if codes else "request_error"
+                reason = f"HTTP {exc.code}"
+                failure = RuntimeError(f"Model {self.model} returned {reason} ({code})")
+                if exc.code not in {408, 429, 500, 502, 503, 504} or set(codes).intersection(
+                    {"insufficient_quota", "insufficient_balance", "billing_hard_limit_reached"}
+                ):
+                    raise failure from None
+                retry_after = retry_after_seconds(exc.headers.get("Retry-After"))
+            except (OSError, http.client.IncompleteRead) as exc:
+                cause = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+                if not (
+                    isinstance(cause, (TimeoutError, ConnectionError, http.client.IncompleteRead))
+                    or isinstance(cause, socket.gaierror)
+                    and cause.errno == socket.EAI_AGAIN
+                ):
+                    raise
+                failure = exc
+                reason = type(cause).__name__
+
+            if attempt > self.retries:
+                raise failure
+            delay = max(retry_after, 2 ** (attempt - 1) + random.random())
+            if delay >= self.deadline - time.monotonic():
+                raise failure
+            logging.getLogger(__name__).warning(
+                "Model %s attempt %d/%d failed (%s), retrying in %.1fs",
+                self.model,
+                attempt,
+                self.retries + 1,
+                reason,
+                delay,
+            )
+            time.sleep(delay)
 
     def chat(self, messages, **options):
         reply = self.post(
@@ -73,7 +137,12 @@ def upper_endpoint(boyue_config, deadline):
         if not (isinstance(allowed, list) and allowed and all(isinstance(m, str) for m in allowed)):
             raise ValueError("invalid Boyue allowed_returned_models")
         return ChatEndpoint(
-            config["base_url"], config["model"], config["api_key"], deadline, allowed_models=allowed
+            config["base_url"],
+            config["model"],
+            config["api_key"],
+            deadline,
+            allowed_models=allowed,
+            retries=UPPER_RETRIES,
         )
     fields = ("_BASE_URL", "_MODEL", "_API_KEY")
     prefix = (
@@ -84,6 +153,7 @@ def upper_endpoint(boyue_config, deadline):
         *(os.environ[prefix + field] for field in fields),
         deadline,
         allowed_models=[expected] if expected else [],
+        retries=UPPER_RETRIES,
     )
 
 

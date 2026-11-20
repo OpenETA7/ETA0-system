@@ -51,6 +51,8 @@ python3 deploy/boyue_episode.py --task 3 --initial-index 0
 
 如果运行环境已有受保护的 Boyue 配置文件，也可以把 `--boyue-config /path/to/boyue-api.json` 直接传给 `deploy/run_libero.py`。每个 episode 的 `rollout/events.jsonl` 记录 planner、teacher、supervisor 的回复和所用帧，`rollout/RESULT.json` 给出结束原因及原生成功标记。
 
+上层 API 遇到超时、临时断连、限流或网关故障时会在同一组帧上最多重试 4 次（含首次共 5 次）。等待期间机器人保持静止。作业日志可查看触发重试的错误和等待秒数。
+
 ## 部署与复核
 
 `deploy/submit.py` 默认预览独立单副本作业请求，传 `--submit` 会新建作业。已部署的副本可以直接复用。启动命令及加载检查见 [serve.py](deploy/serve.py)。配额组的最高优先级为 3，作业可被平台抢占，客户端凭据和 Pod 地址随新副本更新。
