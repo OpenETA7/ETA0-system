@@ -1,117 +1,50 @@
-# Variant: `bbox-mark-point`
+# ETA0 System
 
-本分支整合 bbox 与 mark-point，在同一观测中可调用任一种查询，共享查询额度且不执行物理动作。查询接口和示例见 [docs/visual-query.md](docs/visual-query.md)。
+给 fullmix step2500 的 27B 具身模型增加长程任务规划、视觉监督和单样例上下文学习。一次用户请求对应一次环境 reset。上层商用视觉模型维护目标和进度，27B 根据当前子任务、外部相机、腕部相机及实测状态选择动作。整个过程共用 benchmark 的动作校验、控制器和原生成功条件。
 
-# Minimal Robot Harness
+[系统设计与评测方案](docs/system-design.md) · [基座使用说明](README.base.md)
 
-一个最小的机器人多模态闭环：**观察 → Kimi/其他 policy → 校验动作 → 执行 → 再观察**。
-保留通用腕部 TCP overlay，把任务 reset、控制器与原生成功判定留给 benchmark adapter。
+## 本地体验
 
-本仓库是从已完成的 Kimi LIBERO / RoboCasa 实验中提取的视觉层，加上一份精简闭环。
-它不是旧批量实验逐行为复刻，也尚未包含独立可运行的 LIBERO/RoboCasa 物理执行器。
-
-```text
-Benchmark.observe() ── RGB + K/T + measured TCP ──┐
-                                              ↓
-                                 wrist overlay + model history
-                                              ↓
-                                    injected Kimi/policy client
-                                              ↓
-                         JSON / observation_id / action validation
-                                              ↓
-Benchmark.execute() ── measured feedback ── native success ── repeat
-```
-
-## 文件
-
-| 文件 | 职责 |
-| --- | --- |
-| `harness.py` | 单 episode 闭环、两张实时图、历史、动作校验入口和事件记录 |
-| `rollout_context.py` | 可选的模型自然语言 compact、最近观测保留、旧 CoT 清除与审计事件 |
-| `tcp_overlay.py` | 通用投影/绘图；可单文件使用，无仿真引擎依赖 |
-| `tcp_overlay_adapter.py` | 已有 LIBERO/RoboCasa session 与历史 metadata 的桥接 |
-| `examples/` | 两个 benchmark 的真实历史腕部图、标定 JSON、overlay，以及离线闭环示例 |
-| `visual_query.py` | 框选统计与精确像素回投影，两种查询共用标定与深度接口 |
-| `tests/` | 历史投影回归、边界条件、动作执行与成功判定测试 |
-| `docs/harness.md` | 原实验配方、动作协议和接入边界 |
-
-## 快速运行（离线，不请求模型）
-
-需要 Python 3.10+。
+需要 Python 3.10 或以上版本。下列示例在同一个模拟 episode 中执行两个短任务，展示 supervisor 如何切换目标，以及每次切换后 teacher 给 27B 的指导内容。模型回复和控制器均由脚本模拟。
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[dev]'
-python tcp_overlay.py examples/libero_snapshot.json outputs/libero_overlay.png
-python tcp_overlay.py examples/robocasa_snapshot.json outputs/robocasa_overlay.png
-python examples/dry_run.py --output outputs/dry-run-001
-python -m pytest -q
+uv venv --python 3.12
+uv pip install -e '.[dev]'
+.venv/bin/python examples/hierarchy_demo.py --output outputs/first-demo
+.venv/bin/python -m pytest -q
 ```
 
-`dry_run.py` 使用 fake robot/fake policy，只验证接线。它不代表真实任务成功率。
-每次闭环运行使用全新的输出目录；异常时不会自动恢复并重复物理动作。
+每次使用新的输出目录。打开 `events.jsonl`，按 `subgoal → action_started → execution → upper_request → upper_response` 查看决策及引用的观测目录。每个观测目录包含外部 RGB、腕部原图、TCP 叠加图和投影元数据。
 
-## Overlay 语义
+## 在 YICloud 运行一个 LIBERO episode
 
-- 黄色 TCP：实测末端位置，不是上次请求的目标位置。
-- 红 X / 绿 Y / 蓝 Z：**参考坐标系轴平移到 TCP 处**，不是 tool-local 旋转轴。
-  默认每轴 5 cm，刻度 1 cm。
-- 白线：两个 finger-pad 中心的连线，可省略；不表示物体轴、接触或抓取成功。
-- 不依赖深度图、不做遮挡测试、不读取物体真值。
+当前部署使用 `fdj-infra` 项目的独立作业 `j-1795160878-602322`。服务名为 `eta0-system-fullmix-2500`，本次就绪地址为 `http://172.19.138.62:18680/v1`。访问范围是具备 Pod 网络和相同 GPFS 挂载的集群客户端。启动器在图像验收通过后输出 `ETA0_READY`，其中的 `client_file` 指向该副本的连接信息和凭据。该文件按运行用户私有权限保存。下列命令在带有本仓库代码、对应挂载和仿真环境的集群容器内执行。
 
-![LIBERO 与 RoboCasa 原图及公共 overlay](docs/comparison.png)
-
-跨 benchmark 只需要给出同一时刻的图像、内参 K、相机到参考系的外参、实测 TCP，
-以及可选的两指位置。输入单位为米；图片尺寸、裁剪和镜像必须已经体现在 K 中。
-支持带符号的焦距：历史 LIBERO 使用负 fx，RoboCasa 非镜像图片使用正 fx。
-移动基座每轮必须刷新外参和 TCP。畸变图先 rectify；不要在 renderer 再翻图。
-
-## 接入真实 policy 和 benchmark
-
-```python
-from harness import run
-
-# benchmark: observe(), validate_action(), execute(), success()
-# policy(messages): 返回完整 chat-completions 风格的 response dict
-result = run(
-    benchmark, policy,
-    instruction=task_instruction,
-    action_prompt=benchmark_action_schema,
-    output_dir="outputs/episode-001",
-)
+```bash
+cd /root/tests/inference/eta0-system/releases/26be2b0b8150
+export ETA0_EXECUTOR_CLIENT=/root/tests/inference/eta0-system/rjob-8d131ad6dcf558ed-88c9a4c797eb2ec1-0/client.json
+python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
+  --mode base --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-base
 ```
 
-`policy` 可以包装现有 Kimi client：
+完整层级使用支持多图输入和 Chat Completions 的商用端点。通过运行环境提供 `ETA0_UPPER_BASE_URL`（以 `/v1` 结尾）、`ETA0_UPPER_MODEL` 和 `ETA0_UPPER_API_KEY`，客户端须能访问该端点。上层将收到所选相机帧、用户目标和实测状态。
 
-```python
-def policy(messages):
-    return kimi_client.chat(messages, max_tokens=65536, timeout=1200)
+```bash
+python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
+  --mode teacher --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-teacher
 ```
 
-本仓库没有硬编码 endpoint、API key、模型名称或 thinking 档位；这些由 client 显式配置。
-不需要复制任何旧实验的凭据文件。Client 必须处理超时并返回完整响应，流式半截 JSON
-不能执行；收到 `finish_reason != "stop"` 会拒绝动作。网络重试只允许重试生成。
+`--mode` 支持四种累加设置。用 `base` 单独调用 27B；`plan` 加入规划，由执行器报告子任务结束；`judge` 加入视觉监督；`teacher` 再为每个新子任务生成一段示范。对用户意图测试可传 `--instruction` 改写用户措辞，原生任务和判定仍来自 adapter。如果 27B 因超长思考返回 length，可启用 `--recover-length`，在同一观测上用一次关闭 thinking 的生成来恢复。交互场景使用 `--interactive` 回答澄清问题，批量模式会将问题写入结果。
 
-Adapter 的 `validate_action` 在物理执行前检查完整 schema、坐标系、单位、步数与
-workspace 限制；必须无副作用。`execute` 不自动重试。`success` 必须来自原生
-benchmark；模型 `finish` 仅结束对话，不会被计为成功。
+`deploy/run_libero.py` 从冻结评测计划读取解释器、PhysLM 路径和仿真环境变量。其他 benchmark 可以通过 `harness.run(benchmark, policy, hierarchy=...)` 接入。
 
-评测也可显式开启 `native_finish_feedback=True`：模型请求 finish 时检查原生成功；
-未成功则反馈并继续，而非直接结束。`context_compactor` 支持模型自然语言总结、只留
-最近一组观测、从后续模型上下文移除已总结的旧 CoT，同时保留完整交互审计。
-接入与边界见 [docs/context-compaction.md](docs/context-compaction.md)。
+## 部署与复核
 
-当前最小闭环默认 120 calls / 40 actions / 最近 8 组实时图。它没有批量调度、demo 注入、
-原实验的像素上限、wall-time/tick/memory guards 或生产 API 重试。这些应按用途显式增加，
-不能把本仓库的精简 dry-run 当作原实验等价复现。
+`deploy/submit.py` 默认预览独立单副本作业请求，传 `--submit` 会新建作业。已部署的副本可以直接复用。启动命令及加载检查见 [serve.py](deploy/serve.py)。配额组的最高优先级为 3，作业可被平台抢占，客户端凭据和 Pod 地址随新副本更新。
 
-## 来源与验证
-
-Overlay 来自 PhysLM 的 LIBERO 两图实验（2026-11-02）及 RoboCasa mobile v3
-（2026-10-30），于 2026-11-03 抽取。真实样例仅含机器人观测和标定；未包含完整数据集、
-模型输出、权重或凭据。来源说明见 [docs/provenance.md](docs/provenance.md)。
-
-测试用两个原始 renderer 产生的投影作为期望值，覆盖 TCP、jaw、XYZ、正负 fx、
-移动参考系、矩形图像、近平面与出界裁剪。不宣称在新的 benchmark 上验证过控制闭环。
-图片样式有所调整，投影几何有回归测试；旧实验代码保持冻结。
+```bash
+python3 deploy/submit.py
+yicloud job replicas j-1795160878-602322 --project fdj-infra
+yicloud job logs j-1795160878-602322 --project fdj-infra --keyword ETA0_READY
+```

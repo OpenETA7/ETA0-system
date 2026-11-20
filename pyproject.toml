@@ -9,11 +9,14 @@ description = "Minimal multimodal robot rollout loop and calibrated TCP overlay"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24", "Pillow>=10"]
 
+[project.scripts]
+eta0-run = "eta0_run:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9"]
 
 [tool.setuptools]
-py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context"]
+py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "eta0_run"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

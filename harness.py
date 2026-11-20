@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import copy
 import json
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -79,6 +80,8 @@ def run(
     context_compactor=None,
     bind_observation_ids=False,
     native_finish_feedback=False,
+    hierarchy=None,
+    wall_time_s=None,
 ):
     """Policy(messages) returns a complete chat-completions response.
 
@@ -97,6 +100,13 @@ def run(
         raise ValueError("budgets must be positive integers")
     if context_compactor is not None and context_compactor.task != instruction:
         raise ValueError("compactor task must match the original instruction")
+    if hierarchy is not None and hierarchy.calls:
+        raise ValueError("create a fresh hierarchy per episode")
+    if wall_time_s is not None and wall_time_s <= 0:
+        raise ValueError("wall_time_s must be positive")
+    deadline = time.monotonic() + wall_time_s if wall_time_s is not None else float("inf")
+    transition = trigger = None
+    executing = False
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=False)
     messages = [{"role": "system", "content": action_prompt + "\n" + QUERY_NOTICE}]
@@ -106,9 +116,12 @@ def run(
 
     def event(kind, **data):
         with (out / "events.jsonl").open("a") as stream:
-            stream.write(json.dumps({"event": kind, **data}, allow_nan=False) + "\n")
+            stream.write(
+                json.dumps({"event": kind, "time_unix": time.time(), **data}, allow_nan=False)
+                + "\n"
+            )
 
-    def finish(reason):
+    def finish(reason, detail=None):
         result = dict(
             reason=reason,
             success=bool(benchmark.success()),
@@ -117,13 +130,31 @@ def run(
             rejections=rejected,
             queries=queries,
         )
+        if hierarchy is not None:
+            result["upper_calls"] = hierarchy.calls
+        if detail:
+            result["detail"] = detail
         (out / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
         return result
 
     try:
         while True:
             if benchmark.success():
+                if hierarchy is not None and actions and observation is None:
+                    final = benchmark.observe()
+                    terminal = out / "terminal"
+                    terminal.mkdir()
+                    final.external_rgb.save(terminal / "external.png")
+                    final.wrist_rgb.save(terminal / "wrist_raw.png")
+                    event(
+                        "terminal_observation",
+                        folder="terminal",
+                        observation_id=final.robot.observation_id,
+                        measured_state=final.state,
+                    )
                 return finish("native_success")
+            if time.monotonic() >= deadline:
+                return finish("wall_time_budget")
             if calls >= max_calls or actions >= max_actions:
                 return finish("call_budget" if calls >= max_calls else "action_budget")
             if observation is None:
@@ -170,10 +201,27 @@ def run(
                         ]
                 event("observation", context=context, folder=str(folder.name))
 
+            inference = messages
+            if hierarchy is not None:
+                from hierarchy import ControlStop, Frame
+
+                try:
+                    guidance = hierarchy.prepare(
+                        instruction, Frame(folder, context, transition), actions, trigger, event
+                    )
+                except ControlStop as stop:
+                    return finish(stop.reason, stop.detail)
+                trigger = None
+                inference = [
+                    dict(role="system", content=messages[0]["content"] + "\n" + guidance),
+                    *messages[1:],
+                ]
+            if time.monotonic() >= deadline:
+                return finish("wall_time_budget")
             wire = (
-                context_compactor.prepare(messages)
+                context_compactor.prepare(inference)
                 if context_compactor is not None
-                else copy.deepcopy(messages)
+                else copy.deepcopy(inference)
             )
             if bind_observation_ids:
                 wire = bind_observation_examples(wire)
@@ -201,7 +249,9 @@ def run(
                 if action.get("stage") == "finish":
                     if set(action) != {"stage", "observation_id"}:
                         raise ValueError("finish requires exactly stage and observation_id")
-                    if native_finish_feedback:
+                    if hierarchy is not None:
+                        trigger = "executor_finish"
+                    if native_finish_feedback or hierarchy is not None:
                         successful = bool(benchmark.success())
                         feedback = dict(
                             stage="finish_feedback",
@@ -233,6 +283,7 @@ def run(
                 else:
                     benchmark.validate_action(action, observation)
             except (ValueError, TypeError, KeyError) as error:
+                trigger = "rejected_action: " + str(error)
                 rejected += 1
                 event("rejection", error=str(error), executed=False)
                 messages.append({"role": "user", "content": [text("Rejected: " + str(error))]})
@@ -263,12 +314,26 @@ def run(
                 continue
             # Deliberately outside the validation handler. A physical failure is
             # never converted into a zero-execution validation error or retried.
+            if time.monotonic() >= deadline:
+                return finish("wall_time_budget")
             event("action_started", action=action)
+            executing = True
             feedback = benchmark.execute(action)
+            executing = False
             actions += 1
+            transition = dict(action=action, feedback=feedback)
             event("execution", feedback=feedback)
+            if isinstance(feedback, dict) and any(
+                feedback.get(k) for k in ("interrupted", "error")
+            ):
+                trigger = "controller_feedback"
             messages.append({"role": "user", "content": [text({"execution": feedback})]})
             observation = None
+    except TimeoutError:
+        if not executing and time.monotonic() >= deadline:
+            return finish("wall_time_budget")
+        event("infrastructure_error", actions_completed=actions)
+        raise
     except Exception:
         # Avoid copying exception strings that might contain network credentials.
         event("infrastructure_error", actions_completed=actions)
