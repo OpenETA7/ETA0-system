@@ -55,4 +55,4 @@
 
 首次作业 `j-1795172730-215178` 生成计划和语义示范，执行 6 段 move_to，共 130 个控制 tick。监督者把“observation-006 wrist view: …”作为一整个证据标签，导致引用校验失败，原生任务没有得到最终评分。修复后，系统将允许的帧标签和最新帧标签单独传给监督者。遇到无效引用会在同一观测上要求修正，最多两次，修正完成前保持机器人静止。完整回复和每次拒绝均写入审计。
 
-同初始状态复验作业为 `j-1795173470-915336`。已确认前三段动作完成并收到首个子任务的 advance 决策。运行目录为 `/root/tests/inference/eta0-system/boyue-teacher-aa611b395d5cd433/episode`。最终分数以该目录下的 `rollout/RESULT.json` 为准。
+同初始状态复验作业 `j-1795173470-915336` 执行 3 段 move_to，共 100 个控制 tick。监督者引用本轮提供的 `observation-003`，接受了“夹爪移到黑碗上方”子任务。此后第 4 次上层调用请求 teacher 为抓碗生成示范，等待约 600 秒后发生 HTTPS 读取超时。YICloud 于 2026-11-20 20:30:40（东京时间）将作业标为 Failed，episode 未生成 `rollout/RESULT.json`。本次记为上层服务调用中断，原生任务成功率统计中单列。运行目录为 `/root/tests/inference/eta0-system/boyue-teacher-aa611b395d5cd433/episode`。
