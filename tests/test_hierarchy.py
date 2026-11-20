@@ -158,3 +158,28 @@ def test_truncated_mode_retries_only_generation_then_restores_thinking():
     ]
     assert [len(messages) for messages, _ in model.calls] == [1, 2, 1]
     assert [c["seed"] for _, c in model.calls] == [12, 13, 14]
+
+
+def test_annotated_citation_repaired_at_same_observation(tmp_path):
+    reviews = []
+
+    def director(messages):
+        if messages[0]["content"].startswith("Review"):
+            state = json.loads(messages[-1]["content"][0]["text"])
+            reviews.append(state)
+            label = state["latest_frame_label"]
+            return reply(
+                dict(
+                    decision="advance",
+                    evidence=[label + " wrist view: aligned" if len(reviews) == 1 else label],
+                    reason="Aligned",
+                    hint="Continue",
+                )
+            )
+        return upper(messages)
+
+    result = episode(tmp_path, Hierarchy(director, review_every=1))
+    assert result["success"] and result["actions"] == 2 and len(reviews) == 2
+    assert reviews[0]["allowed_evidence_labels"] == reviews[1]["allowed_evidence_labels"]
+    assert reviews[1]["correction"]
+    assert sum(e["event"] == "invalid_citation" for e in events(tmp_path)) == 1

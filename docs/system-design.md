@@ -48,3 +48,11 @@
 - Teacher 每次只给一个示范，锁定相同模型和上下文预算，和仅给完成条件的组比较。示范仅使用执行时可见信息。保留因示范错误而偏离、以及跳过闭源调用即可成功的案例，以评估额外 token 和延迟是否值得。
 
 基座固定于 `cd6fcd91d19472ce24ea4dbd226930bafbf907c5`。原生 LIBERO adapter 使用训练仓的 `658ec3ec975be54411c604c011dd464bd521d565` 评测发布。[基座分支](https://github.com/OpenETA7/minimal-robot-harness/tree/eval-text-compact) · [原生 adapter](https://github.com/OpenETA7/ETA0-training/blob/658ec3ec975be54411c604c011dd464bd521d565/scripts/inference/rollout_libero_minimal.py)
+
+## Boyue 上层模型联调
+
+2026-11-20 使用 Boyue 当前密钥可见的 `deepseek-v4.1-flash-1017`，完成了双图输入探测，以及真实 LIBERO-10 任务 03、初始状态 0、seed 1234 的 planner、teacher 和 supervisor 调用。响应中的模型名与本机配置一致。
+
+首次作业 `j-1795172730-215178` 生成计划和语义示范，执行 6 段 move_to，共 130 个控制 tick。监督者把“observation-006 wrist view: …”作为一整个证据标签，导致引用校验失败，原生任务没有得到最终评分。修复后，系统将允许的帧标签和最新帧标签单独传给监督者。遇到无效引用会在同一观测上要求修正，最多两次，修正完成前保持机器人静止。完整回复和每次拒绝均写入审计。
+
+同初始状态复验作业为 `j-1795173470-915336`。已确认前三段动作完成并收到首个子任务的 advance 决策。运行目录为 `/root/tests/inference/eta0-system/boyue-teacher-aa611b395d5cd433/episode`。最终分数以该目录下的 `rollout/RESULT.json` 为准。

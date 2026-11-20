@@ -12,32 +12,45 @@ from rollout_context import HistoryCompactor, bounded_cleanup
 
 
 class ChatEndpoint:
-    def __init__(self, base_url, model, key, deadline, *, direct=False):
+    def __init__(self, base_url, model, key, deadline, *, direct=False, allowed_models=()):
         self.url = base_url.rstrip("/")
         self.model = model
         self.key = key
         self.deadline = deadline
         self.direct = direct
+        self.allowed_models = allowed_models
 
     def post(self, url, payload):
+        import urllib.error
         import urllib.request
 
-        headers = {"Content-Type": "application/json"}
-        if self.key:
-            headers["Authorization"] = "Bearer " + self.key
+        headers = {"Content-Type": "application/json", "User-Agent": "ETA0-System/0.1"}
         request = urllib.request.Request(url, json.dumps(payload).encode(), headers)
+        if self.key:
+            request.add_unredirected_header("Authorization", "Bearer " + self.key)
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("episode wall time exhausted")
         handlers = [urllib.request.ProxyHandler({})] if self.direct else []
         opener = urllib.request.build_opener(*handlers)
-        with opener.open(request, timeout=min(remaining, 600)) as response:
-            return json.load(response)
+        try:
+            with opener.open(request, timeout=min(remaining, 600)) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as exc:
+            try:
+                error = json.loads(exc.read(8192)).get("error", {})
+                code = str(error.get("type") or error.get("code") or "request_error")
+            except (ValueError, AttributeError):
+                code = "request_error"
+            raise RuntimeError(f"Model {self.model} returned HTTP {exc.code} ({code})") from None
 
     def chat(self, messages, **options):
-        return self.post(
+        reply = self.post(
             self.url + "/chat/completions", dict(model=self.model, messages=messages, **options)
         )
+        if self.allowed_models and reply.get("model") not in self.allowed_models:
+            raise ValueError("upper endpoint returned a model outside the configured allowlist")
+        return reply
 
     def count(self, messages):
         info = self.post(
@@ -51,6 +64,27 @@ class ChatEndpoint:
         if info["max_model_len"] != 262144:
             raise ValueError("executor context differs from the pinned serving profile")
         return info["count"]
+
+
+def upper_endpoint(boyue_config, deadline):
+    if boyue_config is not None:
+        config = json.loads(boyue_config.read_text())["boyue"]
+        allowed = config.get("allowed_returned_models", [config["model"]])
+        if not (isinstance(allowed, list) and allowed and all(isinstance(m, str) for m in allowed)):
+            raise ValueError("invalid Boyue allowed_returned_models")
+        return ChatEndpoint(
+            config["base_url"], config["model"], config["api_key"], deadline, allowed_models=allowed
+        )
+    fields = ("_BASE_URL", "_MODEL", "_API_KEY")
+    prefix = (
+        "ETA0_UPPER" if any("ETA0_UPPER" + field in os.environ for field in fields) else "KIMI_CODE"
+    )
+    expected = os.environ.get("ETA0_UPPER_EXPECTED_MODEL")
+    return ChatEndpoint(
+        *(os.environ[prefix + field] for field in fields),
+        deadline,
+        allowed_models=[expected] if expected else [],
+    )
 
 
 class ExecutorPolicy:
@@ -96,6 +130,7 @@ class ExecutorPolicy:
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--boyue-config", type=Path, help="private Boyue JSON client configuration")
     p.add_argument("--suite", default="libero_10")
     p.add_argument("--task", type=int, required=True)
     p.add_argument("--initial-index", type=int, required=True)
@@ -131,12 +166,7 @@ def main():
     )
     hierarchy = None
     if args.mode != "base":
-        upper = ChatEndpoint(
-            os.environ["ETA0_UPPER_BASE_URL"],
-            os.environ["ETA0_UPPER_MODEL"],
-            os.environ["ETA0_UPPER_API_KEY"],
-            deadline,
-        )
+        upper = upper_endpoint(args.boyue_config, deadline)
         hierarchy = Hierarchy(
             upper.chat,
             teacher=args.mode == "teacher",

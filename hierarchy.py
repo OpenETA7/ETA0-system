@@ -146,6 +146,38 @@ class Hierarchy:
             raise ValueError(f"incomplete {role} reply")
         return parse_action(choice["message"]["content"])
 
+    def review(self, state, event):
+        labels = [frame.folder.name for frame in self.selected_frames()]
+        request = dict(state, allowed_evidence_labels=labels, latest_frame_label=labels[-1])
+        prompt = (
+            JUDGE + " Copy labels verbatim from allowed_evidence_labels into evidence. "
+            "Place all descriptions of what you see in reason."
+        )
+        for attempt in range(3):
+            result = self.ask("supervisor", prompt, request, event)
+            evidence = result.get("evidence")
+            if (
+                not isinstance(evidence, list)
+                or not evidence
+                or any(not isinstance(label, str) or label not in labels for label in evidence)
+            ):
+                error = "judge must cite a supplied frame using the exact label"
+            elif result.get("decision") == "advance" and labels[-1] not in evidence:
+                error = "advance must cite the latest frame"
+            else:
+                return result
+            event(
+                "invalid_citation",
+                call=self.calls,
+                error=error,
+                received=evidence,
+                allowed=labels,
+                executed=False,
+            )
+            if attempt == 2:
+                raise ValueError(error)
+            request = dict(request, correction=error, previous_evidence=evidence)
+
     def prepare(self, instruction, frame, actions, trigger, event):
         fresh = not self.frames or self.frames[-1].folder != frame.folder
         if fresh:
@@ -178,19 +210,10 @@ class Hierarchy:
             trigger or (fresh and actions - self.last_review >= self.review_every)
         ):
             self.last_review = actions
-            result = self.ask("supervisor", JUDGE, state, event)
+            result = self.review(state, event)
             evidence = result["evidence"]
-            valid = {frame.folder.name for frame in self.selected_frames()}
-            if (
-                not isinstance(evidence, list)
-                or not evidence
-                or any(e not in valid for e in evidence)
-            ):
-                raise ValueError("judge must cite a supplied frame")
             reason = phrase(result["reason"])
             decision = result["decision"]
-            if decision == "advance" and frame.folder.name not in evidence:
-                raise ValueError("advance must cite the latest frame")
             self.hint = phrase(result["hint"]) if result.get("hint") else reason
             if decision == "stop":
                 raise ControlStop("supervisor_stop", reason)

@@ -39,6 +39,18 @@ python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
 
 `deploy/run_libero.py` 从冻结评测计划读取解释器、PhysLM 路径和仿真环境变量。其他 benchmark 可以通过 `harness.run(benchmark, policy, hierarchy=...)` 接入。
 
+## 从 Mac 用 Boyue 启动一次 teacher 联调
+
+在本机运行以下命令会预览一个 0 GPU 的 LIBERO 客户端作业，执行时追加 `--submit`。它复用现有 TP2 服务，默认读取 `~/.config/robodojo/boyue-api.json` 的 boyue 配置。用 `--cli` 可以指定本机的 yicloud 可执行文件或包装脚本。
+
+```bash
+python3 deploy/boyue_episode.py --task 3 --initial-index 0
+```
+
+提交后，终端会给出作业 ID 与 GPFS 上的 episode 路径。Mac 用该次作业的临时公钥加密凭据，交付作业将密文传入集群。解密后的配置只在 CPU 作业的本机临时目录内存在。每次运行从 Mac 重新交付，凭据轮换后沿用同一入口。客户端用配置里的 `allowed_returned_models` 检查上层实际返回的模型名。
+
+如果运行环境已有受保护的 Boyue 配置文件，也可以把 `--boyue-config /path/to/boyue-api.json` 直接传给 `deploy/run_libero.py`。每个 episode 的 `rollout/events.jsonl` 记录 planner、teacher、supervisor 的回复和所用帧，`rollout/RESULT.json` 给出结束原因及原生成功标记。
+
 ## 部署与复核
 
 `deploy/submit.py` 默认预览独立单副本作业请求，传 `--submit` 会新建作业。已部署的副本可以直接复用。启动命令及加载检查见 [serve.py](deploy/serve.py)。配额组的最高优先级为 3，作业可被平台抢占，客户端凭据和 Pod 地址随新副本更新。
