@@ -27,6 +27,7 @@ Benchmark.execute() ── measured feedback ── native success ── repeat
 | 文件 | 职责 |
 | --- | --- |
 | `harness.py` | 单 episode 闭环、两张实时图、历史、动作校验入口和事件记录 |
+| `rollout_context.py` | 可选的模型自然语言 compact、最近观测保留、旧 CoT 清除与审计事件 |
 | `tcp_overlay.py` | 通用投影/绘图；可单文件使用，无仿真引擎依赖 |
 | `tcp_overlay_adapter.py` | 已有 LIBERO/RoboCasa session 与历史 metadata 的桥接 |
 | `examples/` | 两个 benchmark 的真实历史腕部图、标定 JSON、overlay，以及离线闭环示例 |
@@ -95,6 +96,11 @@ def policy(messages):
 Adapter 的 `validate_action` 在物理执行前检查完整 schema、坐标系、单位、步数与
 workspace 限制；必须无副作用。`execute` 不自动重试。`success` 必须来自原生
 benchmark；模型 `finish` 仅结束对话，不会被计为成功。
+
+评测也可显式开启 `native_finish_feedback=True`：模型请求 finish 时检查原生成功；
+未成功则反馈并继续，而非直接结束。`context_compactor` 支持模型自然语言总结、只留
+最近一组观测、从后续模型上下文移除已总结的旧 CoT，同时保留完整交互审计。
+接入与边界见 [docs/context-compaction.md](docs/context-compaction.md)。
 
 当前最小闭环默认 120 calls / 40 actions / 最近 8 组实时图。它没有批量调度、demo 注入、
 原实验的像素上限、wall-time/tick/memory guards 或生产 API 重试。这些应按用途显式增加，

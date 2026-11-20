@@ -16,6 +16,7 @@ from typing import Protocol
 
 from PIL import Image
 
+from rollout_context import bind_observation_examples
 from tcp_overlay import CameraCalibration, RobotGeometry, render_tcp_overlay
 from visual_query import QUERY_NOTICE, QUERY_STAGES, query
 
@@ -35,9 +36,11 @@ class Benchmark(Protocol):
     def validate_action(self, action: dict, observation: Observation) -> None:
         """Reject with ValueError before any physics; verify schema, units and bounds."""
         ...
+
     def execute(self, action: dict) -> dict:
         """Execute exactly once and return measured feedback; do not retry on failure."""
         ...
+
     def success(self) -> bool:
         """Original benchmark success, not a model prediction."""
         ...
@@ -62,18 +65,38 @@ def parse_action(content):
     return action
 
 
-def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
-        max_calls=120, max_actions=40, keep_observations=8, max_queries_per_observation=4):
+def run(
+    benchmark: Benchmark,
+    policy,
+    *,
+    instruction,
+    action_prompt,
+    output_dir,
+    max_calls=120,
+    max_actions=40,
+    keep_observations=8,
+    max_queries_per_observation=4,
+    context_compactor=None,
+    bind_observation_ids=False,
+    native_finish_feedback=False,
+):
     """Policy(messages) returns a complete chat-completions response.
 
     Caller resets the benchmark and closes it afterwards. Use a fresh output
     directory; never silently resume an episode and repeat an uncertain action.
     Policy must enforce its own request timeout. This deliberately small loop
     has call/action bounds, not the original batch's wall-time/tick/memory guards.
+    Optional context_compactor changes inference history only, never the audit.
+    In native_finish_feedback mode a premature model finish receives measured
+    failure feedback and continues within the same call/action budgets.
     """
-    if any(type(n) is not int or n <= 0 for n in
-           (max_calls, max_actions, keep_observations, max_queries_per_observation)):
+    if any(
+        type(n) is not int or n <= 0
+        for n in (max_calls, max_actions, keep_observations, max_queries_per_observation)
+    ):
         raise ValueError("budgets must be positive integers")
+    if context_compactor is not None and context_compactor.task != instruction:
+        raise ValueError("compactor task must match the original instruction")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=False)
     messages = [{"role": "system", "content": action_prompt + "\n" + QUERY_NOTICE}]
@@ -86,8 +109,14 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
             stream.write(json.dumps({"event": kind, **data}, allow_nan=False) + "\n")
 
     def finish(reason):
-        result = dict(reason=reason, success=bool(benchmark.success()), calls=calls,
-                      actions=actions, rejections=rejected, queries=queries)
+        result = dict(
+            reason=reason,
+            success=bool(benchmark.success()),
+            calls=calls,
+            actions=actions,
+            rejections=rejected,
+            queries=queries,
+        )
         (out / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
         return result
 
@@ -110,33 +139,59 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                 observation.wrist_rgb.save(folder / "wrist_raw.png")
                 overlay.save(wrist_path)
                 (folder / "overlay.json").write_text(json.dumps(metadata, indent=2) + "\n")
-                context = dict(task=instruction, observation_id=observation.robot.observation_id,
-                               reference_frame=observation.robot.reference_frame,
-                               measured_state=observation.state, overlay_notice=metadata["notice"])
-                messages.append({"role": "user", "content": [
-                    text("External RGB"), image_part(external_path),
-                    text("Wrist RGB with measured TCP overlay"),
-                    image_part(wrist_path), text(context),
-                ]})
+                context = dict(
+                    task=instruction,
+                    observation_id=observation.robot.observation_id,
+                    reference_frame=observation.robot.reference_frame,
+                    measured_state=observation.state,
+                    overlay_notice=metadata["notice"],
+                )
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            text("External RGB"),
+                            image_part(external_path),
+                            text("Wrist RGB with measured TCP overlay"),
+                            image_part(wrist_path),
+                            text(context),
+                        ],
+                    }
+                )
                 observation_messages.append([len(messages) - 1])
                 # Evict image bytes only. Text and returned reasoning remain.
                 for group in observation_messages[:-keep_observations]:
                     for index in group:
                         messages[index]["content"] = [
                             text("[Older image omitted; text retained.]")
-                            if part["type"] == "image_url" else part
+                            if part["type"] == "image_url"
+                            else part
                             for part in messages[index]["content"]
                         ]
                 event("observation", context=context, folder=str(folder.name))
 
-            response = policy(copy.deepcopy(messages))
+            wire = (
+                context_compactor.prepare(messages)
+                if context_compactor is not None
+                else copy.deepcopy(messages)
+            )
+            if bind_observation_ids:
+                wire = bind_observation_examples(wire)
+            response = policy(wire)
             calls += 1
             event("response", response=response)
             choice = response["choices"][0]
             message = choice["message"]
-            messages.append({"role": "assistant", **{
-                key: message[key] for key in ("content", "reasoning_content") if key in message
-            }})
+            messages.append(
+                {
+                    "role": "assistant",
+                    **{
+                        key: message[key]
+                        for key in ("content", "reasoning", "reasoning_content")
+                        if key in message
+                    },
+                }
+            )
             try:
                 if choice["finish_reason"] != "stop":
                     raise ValueError("incomplete generation")
@@ -146,6 +201,30 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                 if action.get("stage") == "finish":
                     if set(action) != {"stage", "observation_id"}:
                         raise ValueError("finish requires exactly stage and observation_id")
+                    if native_finish_feedback:
+                        successful = bool(benchmark.success())
+                        feedback = dict(
+                            stage="finish_feedback",
+                            native_success=successful,
+                            observation_id=observation.robot.observation_id,
+                            executed_ticks=0,
+                        )
+                        event("finish_feedback", feedback=feedback)
+                        if successful:
+                            return finish("native_success")
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": [
+                                    text(feedback),
+                                    text(
+                                        "The environment has not judged this task successful. "
+                                        "Continue from the current measured observation."
+                                    ),
+                                ],
+                            }
+                        )
+                        continue
                     return finish("model_finish")
                 if action.get("stage") in QUERY_STAGES:
                     if local_queries >= max_queries_per_observation:
@@ -163,11 +242,22 @@ def run(benchmark: Benchmark, policy, *, instruction, action_prompt, output_dir,
                 local_queries += 1
                 query_path = folder / f"query-{local_queries:02d}.png"
                 annotated.save(query_path)
-                event("visual_query", request=action, feedback=query_feedback,
-                      image=str(query_path.relative_to(out)), executed_ticks=0)
-                messages.append({"role": "user", "content": [
-                    text(query_feedback), image_part(query_path),
-                ]})
+                event(
+                    "visual_query",
+                    request=action,
+                    feedback=query_feedback,
+                    image=str(query_path.relative_to(out)),
+                    executed_ticks=0,
+                )
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            text(query_feedback),
+                            image_part(query_path),
+                        ],
+                    }
+                )
                 # Associate all query images with the same observation for eviction.
                 observation_messages[-1].append(len(messages) - 1)
                 continue
