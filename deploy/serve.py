@@ -24,7 +24,8 @@ def serve(session=None, port=PORT):
     session = session or Path("/root/tests/inference/eta0-system") / socket.gethostname()
     session.mkdir(parents=True, exist_ok=True)
     key = secrets.token_urlsafe(32)
-    for path in (TARGET, DRAFT):
+    draft = os.environ.get("ETA0_DFLASH_DRAFT", DRAFT)
+    for path in (TARGET, draft):
         if not (Path(path) / "config.json").is_file():
             raise FileNotFoundError(path)
     runtime = Path(json.loads(PLAN.read_text())["runtime_mirror"])
@@ -120,7 +121,7 @@ def serve(session=None, port=PORT):
         "--port",
         str(port),
         "--speculative-config",
-        json.dumps(dict(method="dflash", model=DRAFT, num_speculative_tokens=7)),
+        json.dumps(dict(method="dflash", model=draft, num_speculative_tokens=7)),
     ]
     with (session / "server.log").open("w") as log:
         proc = subprocess.Popen(args, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -188,15 +189,21 @@ def serve(session=None, port=PORT):
         if choice["finish_reason"] != "stop" or "red" not in answer.lower().split(".")[0].split():
             raise RuntimeError("visual canary failed: " + answer[:80])
         info = dict(
+            target=TARGET,
+            draft=draft,
             base_url=f"http://{socket.gethostbyname(socket.gethostname())}:{port}/v1",
             model=MODEL,
             canary=answer,
             client_file=str(session / "client.json"),
         )
-        (session / "client.json").write_text(json.dumps(dict(**info, api_key=key)))
+        client = session / "client.json"
+        temp = client.with_suffix(".tmp")
+        temp.write_text(json.dumps(dict(**info, api_key=key)))
+        temp.replace(client)
         print("ETA0_READY " + json.dumps(info), flush=True)
         raise SystemExit(proc.wait())
     finally:
+        (session / "client.json").unlink(missing_ok=True)
         if proc.poll() is None:
             proc.terminate()
             proc.wait()

@@ -58,35 +58,14 @@ class Frame:
     transition: dict | None
 
 
-class Hierarchy:
-    """Create a fresh instance for each episode. Every review is a synchronous action barrier."""
+class VisualAdvisor:
+    """Shared transport and frame audit for upper-model requests."""
 
-    def __init__(
-        self,
-        upper,
-        *,
-        teacher=True,
-        supervise=True,
-        review_every=3,
-        max_upper_calls=60,
-        clarify=None,
-    ):
-        if review_every < 1 or max_upper_calls < 1:
-            raise ValueError("budgets must be positive")
+    def __init__(self, upper, max_upper_calls):
         self.upper = upper
-        self.teacher = teacher
-        self.supervise = supervise
-        self.review_every = review_every
         self.max_upper_calls = max_upper_calls
-        self.clarify = clarify
         self.calls = 0
-        self.steps = []
-        self.completed = []
         self.frames = []
-        self.demo = []
-        self.hint = ""
-        self.answer = ""
-        self.last_review = 0
 
     def selected_frames(self):
         last = len(self.frames) - 1
@@ -145,6 +124,34 @@ class Hierarchy:
         if choice["finish_reason"] != "stop":
             raise ValueError(f"incomplete {role} reply")
         return parse_action(choice["message"]["content"])
+
+
+class Hierarchy(VisualAdvisor):
+    """Create a fresh instance for each episode. Every review is a synchronous action barrier."""
+
+    def __init__(
+        self,
+        upper,
+        *,
+        teacher=True,
+        supervise=True,
+        review_every=3,
+        max_upper_calls=60,
+        clarify=None,
+    ):
+        if review_every < 1 or max_upper_calls < 1:
+            raise ValueError("budgets must be positive")
+        super().__init__(upper, max_upper_calls)
+        self.teacher = teacher
+        self.supervise = supervise
+        self.review_every = review_every
+        self.clarify = clarify
+        self.steps = []
+        self.completed = []
+        self.demo = []
+        self.hint = ""
+        self.answer = ""
+        self.last_review = 0
 
     def review(self, state, event):
         labels = [frame.folder.name for frame in self.selected_frames()]

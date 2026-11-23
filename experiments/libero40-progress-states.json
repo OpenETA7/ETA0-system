@@ -1,0 +1,522 @@
+[
+  {
+    "suite": "libero_spatial",
+    "task": 0,
+    "name": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate",
+    "bddl_sha256": "9b59eb1287802868ad9bc78d58e6d36d4ba31134e679cfdbdf4b0feb660c959b",
+    "initial_state_sha256": [
+      "4e3eaf7a315bc3bafb6db4837c8eef0e5f8aea717782a2a3ea33139392d966ed",
+      "6c2936dc25a97728b811f9db579687d011cbd231d5472e985775a67ca9892cf8",
+      "a5d4b6d871eb48c276a3fc8499e1429ec1c59df278466aa82de44a93260087a0",
+      "c12064bdc97da3ba4ca3675548ba9c76ed096ea772bbec9ca9422628c41b1588",
+      "63dbd6b627e35e377a62f3e791055bc9051a74cab6fef9eadce7892671160536"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 1,
+    "name": "pick_up_the_black_bowl_next_to_the_ramekin_and_place_it_on_the_plate",
+    "bddl_sha256": "53a7516571412a2f46a27cbf8482d3b76dbad4221858c8f6b565d506c274e61d",
+    "initial_state_sha256": [
+      "d116842e01703fbea595511db813a3816c8d9f2302b4e979ebec4f15b7a750a2",
+      "b8757ca36fc25bb010af8934ff98b8d3a221cbd3a5e38e7b07cc8055c3108a0b",
+      "d45a8bb759e662331e34b0ade8f7a4ca847993b682d3299aaa4894b340c845a0",
+      "9cdfce0fe3434dc2c261272bc32dd3b56956de7c14e1e6d4c8a76aa7323e0f4d",
+      "97916cb27d2a1b9650016b93bbc33aa2855dfbdd11ded29650da8357c5c418e2"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 2,
+    "name": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate",
+    "bddl_sha256": "5e19880ebc844f86b89f63b172aab0b7a89f85b6e6955891f544f0ea7d0795d5",
+    "initial_state_sha256": [
+      "408c455fb617e5320060d643ef80ec2035d4e98600659cc3deb5a1e85482bf76",
+      "05962fe9baf173d80806225d32a331fa8eedcdb5c14a085ee5354715380c0f8f",
+      "111971abb8f2e699872e68aa0ed445287da5c2ed642a5da083a9c9d4d90a6d12",
+      "8e240fdf6a9c939b6cbf573f7e07a29d3078fb53d22b17dc595b730c0de21fd4",
+      "ec0ce01e43aac4b4465f6d7932a486df948ce36a096fe5970b677623505673a8"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 3,
+    "name": "pick_up_the_black_bowl_on_the_cookie_box_and_place_it_on_the_plate",
+    "bddl_sha256": "3d4ccf070c3d9883ae0676f2d888588f98c696ddad71b7694f47c379fc99ef36",
+    "initial_state_sha256": [
+      "36424fa758f0e72399a35cefa285d0658e4b5bd17bfb3e2127f85aa2e0944517",
+      "3a92ca9cb754b9daca5db603179f05e323c01209edfaf5d287655d5998252f9f",
+      "1b7b03eb038b60bd3d265226a1f5832c44ebb968731ac264f8983ceebb1774e5",
+      "904c8983a02abc68413c2b0c2b1863f9b7f97a5948b718b9ae113727777ae23a",
+      "6aac318bd2ff7b4e940c094d4d4eb128449f99e34ce1fc2fb6e3bdba1c474b95"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 4,
+    "name": "pick_up_the_black_bowl_in_the_top_drawer_of_the_wooden_cabinet_and_place_it_on_the_plate",
+    "bddl_sha256": "4371189e11d9fd29bb548ab9a8adcd741bb0ce41bb66c612672d0e8cb29a52a9",
+    "initial_state_sha256": [
+      "2e3f91b350eaef1b23c2d4ee14c513b2158a106bff7ed6c249b58e2cf89367f4",
+      "d1f552d41794709fdcdccf886e4be6384f15a50c1d0e6227a99e08d86e19e23e",
+      "d5a2a728be37ce588fd1326df08b48cb9e1913b333c6719bb7059308783d4731",
+      "7e950b4903eb62f247605b60952d62aca17222446e05c299de3d8b615756a2fb",
+      "eacc257cf75be38a89bdf75e5300cded0aee0ec1d0a2ac4b91d4c4cdb11c763b"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 5,
+    "name": "pick_up_the_black_bowl_on_the_ramekin_and_place_it_on_the_plate",
+    "bddl_sha256": "10239815a9d18ad53e09365d453a362ee54d29ca276e04eef411cf1db8d72940",
+    "initial_state_sha256": [
+      "63f019944e240d60a5770936f1eaa3853e38bbfeb1c26c987826fb004ed4346c",
+      "7e74f7975ea3899ecb94c8bee1f302127d74c600d13393826d7537db89bf9cc1",
+      "56ae454858e60cf316c3e75237109ba85d8808ab2ef57108c3f9b96c1e839ff3",
+      "316d2aba39523fa1219e5fd61ee263535f5d42fa5b34541af5397ddbb4de0f9f",
+      "b41c19206da1db4e005476e6a4c4e077a5511aaa69cf52614dc483a9bd53773c"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 6,
+    "name": "pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate",
+    "bddl_sha256": "566c65596f3472e752e6522817bff51bbf3ce5159d7bec1d3554e5ead46b1e55",
+    "initial_state_sha256": [
+      "d81530779b15be6bdfe4935a7a802102e3e3883823b29fefd40a2131e50fd515",
+      "1f2318d9cbd670217d18ba98020fb95f9969550b5cb30709224eb6f2d08319cf",
+      "f6387456ce397a4ffbd6700d00f37cf068df8df4c085350ecd576be0c06fe838",
+      "d19a9fb4d0ecb282facdf60aeb779a54566f6650fa8886721c253c21e5b4411c",
+      "62a70d2032d8d785b0a4afedbfce1abf35ff393e9d918b5aace7a41ab50ba13d"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 7,
+    "name": "pick_up_the_black_bowl_on_the_stove_and_place_it_on_the_plate",
+    "bddl_sha256": "dd11837141a30d874ebbbfaae20e91ecc67ec85ab3872ceb4cff3abfcbef7cb0",
+    "initial_state_sha256": [
+      "501105aff4e1897d96cac0d0ee69fc702ad209e317511807e27df8b421ae1f2a",
+      "9fb3287b9233e63f3c25de74a5c1697d6c3e3ce33d71da6cb975e98884df7b65",
+      "055ebb922514bbc2796db6201c2eb1f36c0f2dc6d3e906bdfed720d9d67f25e1",
+      "fb10b9a998805283abff88cfd066b7f6b4130868e2b53e5f6def7247f72b6c5a",
+      "3caf9d7ec66e840dd915ee960dc5e226df2aee678fa087f77cac918e4169531e"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 8,
+    "name": "pick_up_the_black_bowl_next_to_the_plate_and_place_it_on_the_plate",
+    "bddl_sha256": "c8fbb9effa27b947d04d26862d75273d93cac1806734e53836cd472a08aec1fe",
+    "initial_state_sha256": [
+      "aef30979e2ee8c9893c9161c881264362f750a34df952f381e3969a567688451",
+      "50873b51eb943c92ce71438551a26675e253fe37622918167c060a16477577f7",
+      "4463e2e153ce61661d48384171f0532d4eb4c45158ab9c0325012e26c0a9d830",
+      "8d1fbf0d1785c75002a47f290b3b6d195d3a26b8c9a86cf95512ba804fd36d4b",
+      "ad6e3d768b047e190024a0a97a7869b0de5c83bfd7079cb2b048725b6c5c90f5"
+    ]
+  },
+  {
+    "suite": "libero_spatial",
+    "task": 9,
+    "name": "pick_up_the_black_bowl_on_the_wooden_cabinet_and_place_it_on_the_plate",
+    "bddl_sha256": "5293e759381b477e126beaf83d738542bbd4d93f522a3eead1066e612bad4a8c",
+    "initial_state_sha256": [
+      "885cdd89e3d71824f79e4f0ae4711f9ca04367c0011147cb657ecc32be3f375b",
+      "9f7e0be6c15a36f64dae1f64c4e89799ab70078be2b9977ab38bce16aee041cf",
+      "6e3698ba2ffc6e03326d30f3fd411f63e4d5304a967abf515195cbbcc61f512b",
+      "c886eacbd6a6b3c55108d5e17d8d0f865c08b7841f1c0f0393df6b4da9dc53c3",
+      "49ada1c8c36ae86de4d6288f08b9434efbd67ded5688382fd38b0d4c95304177"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 0,
+    "name": "pick_up_the_alphabet_soup_and_place_it_in_the_basket",
+    "bddl_sha256": "df088984da13131f8332ee0f13a7896c6a97afd02ee5007a42e8fc5e0893571e",
+    "initial_state_sha256": [
+      "6cd4976519943bdc84677396a6e2942e9816ae87e56fc72943914e147f9b6e1e",
+      "2fe669827623c130cb212d851d2ac5189aa22d888856b2c056ee744b2b698bcc",
+      "062dc4b945081bf31237b402969b8503a99fda3500b396d3fe98449c8872dfd4",
+      "01cbc7824b55a08fadaa6fb0397f43a3baf0ebdb90f25ec7d1d3db51313c4e94",
+      "ccf1b9956a832c5ba7e57eed974483435a70a1e7ab668b172a5555c75933abfe"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 1,
+    "name": "pick_up_the_cream_cheese_and_place_it_in_the_basket",
+    "bddl_sha256": "7019f37ee158d67a21338a6df0c441dd8f84979b946b5e20bb49463ef0508ea2",
+    "initial_state_sha256": [
+      "4404ff0ecec75d07dbe02cdb0a6284fb3b24c79f2c164987433f00d3b885948c",
+      "33644d67933758f98da6287e62ed0fa79250d398107872e297d7db728895fdbe",
+      "4b18eff5a14fb9e6226ce096c48dfe4a4b55009958fdd4826dfed6b9a500568b",
+      "d3aef66d3da45a29cdc1354a26ded28b2699e0a8a7ad18a69209a0f35df1e1b4",
+      "40fbc68dd3d63ed79e020af99bea987bfb9055bf939c26b23ffe9d33e52e70b1"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 2,
+    "name": "pick_up_the_salad_dressing_and_place_it_in_the_basket",
+    "bddl_sha256": "024978e9e8f43a49b49d0965f4f426d364ce056307f0fcf5733dc4682fac437a",
+    "initial_state_sha256": [
+      "02feb7104ff3af12f1247c461997f1113686f704fb702cd3280d6bfba56e6f71",
+      "add76fa3d08f814a7d0386ffc26809a576a23aa066136e5b2401e8a3d0cb2cb6",
+      "c4facf0ecf55df947c6299884b6549c12bcaa2fde689e0a5621a4f9f89ae9992",
+      "67dc5ca8627d448e4ff59966f86ae880115c5cb7ed2b2a69bf46aba98b204c3f",
+      "3221a995bc04447c6b25aa5d4014f38d6cc8a68938b2610ba6ed52624ee202e2"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 3,
+    "name": "pick_up_the_bbq_sauce_and_place_it_in_the_basket",
+    "bddl_sha256": "8a7e37b76fce5621e649e260dbcfcec7ce2f9a055ca09a4f1ebaf5ca74a739c2",
+    "initial_state_sha256": [
+      "65b4e812d49c1bc043dd16e4226442779ebaaf106dca39030d9a8576460bc091",
+      "ad690ab94fbf2f764585e70aec14965559b24969f648d166ecd77cf891ce2d1e",
+      "535fdf87422bbcc1e3820d60230c2282e5bc33e9f5abce92c3c02593c4fc47f0",
+      "a6e007ddbb2b278a51b384d255fa84245eb5ae1d831a21d2384d77292fbd2986",
+      "41acdbccc08874fa4a087d4363183c32701452d8c8d62d3de96661b67456f21a"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 4,
+    "name": "pick_up_the_ketchup_and_place_it_in_the_basket",
+    "bddl_sha256": "4a4e545483a3fe30cf0ef3dc05bfe5e6ad5e37c94b4376dfa73fe1b60e75b319",
+    "initial_state_sha256": [
+      "18c4d582007cfa2a76303af28f67aeab015a8f95fac59ea882ec786c120b8919",
+      "57923257e1d175487c4f0e7c807e9bbfa3dbbc380c02dfe93a980d1653466ca0",
+      "6d2f5d40a246f962ec0017e81ec84d603d4a3e7cdfd19afef86810174a23630b",
+      "59814a7ed6180add62d47141c2717b32a37cb99e61fb69e81801cc3be7b05aa3",
+      "cac105b3a6d4b26d2aea65abaa0fd190bf1f2f8347a09473228019d8c1d36619"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 5,
+    "name": "pick_up_the_tomato_sauce_and_place_it_in_the_basket",
+    "bddl_sha256": "b1f4bb69d256a05f693838de46182bb0d3de0de68eec350df1b5b1e76f6c136d",
+    "initial_state_sha256": [
+      "000a33b33f0beeee61ad6bc3f11f362fd5d9c6d8ecf7a7627575d9ebc775e121",
+      "ce18466b08cc9ed61a3a64e9f8a363617e8242fcb2975e9e0bac1a3845e41a83",
+      "bb16f12f5213b093258f3318b209132d9a69cedaf6eed9cd3a58e4b8f95c69ac",
+      "3570eb0eddc032fc72c306085780b4dd07e62197c67090758f067a6abaabe4f4",
+      "1556a84b40ca1c75f8661039f92b96f364566d43ebc12ff659472cb9ea9e3dfe"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 6,
+    "name": "pick_up_the_butter_and_place_it_in_the_basket",
+    "bddl_sha256": "5d8053b40ff33246fdbcc38548db84032c6bb647b4b88b6646d9cf6b73a5006c",
+    "initial_state_sha256": [
+      "bad9bba0fbdf574e67aa4f37c8ec45b157b0f587a4f1c255fef5f0c2c146998d",
+      "213f81733d30323e27ea912a5a9736830957529d3201943a1ada7f5590f8a4f5",
+      "c21cc2b537e2701898d990680eaa7565df3530e8ed95ae858310c013f3cc09dc",
+      "1400d3d53ad7f200d9118c0fba741c551206db24cb567a200041db29a63281cc",
+      "3488e4309b87d897a16bec8e958daf5b46e048164989668f0469c7312c48b46a"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 7,
+    "name": "pick_up_the_milk_and_place_it_in_the_basket",
+    "bddl_sha256": "9910aabf6717e8ba3e24a3f8500d9bce9ee075346ea6961e8fd766f1257d2996",
+    "initial_state_sha256": [
+      "f0161129a0b12199cbd541c0b406015976bbf13af728ecb767c63c5ca8c8b34b",
+      "0d8646c3a118eb8d7800f6e46da313f878869576770acb0ee6642367eb44c46f",
+      "484194ce1865cb08e97bcdaf90a24af99a80ef972ab8598f2707104ead74cf90",
+      "2389378fb4df777f9941c948214bf4a5f1bfcc7c1cbd54f2b55d3aa2be68f380",
+      "cf9e795e39f9c96fbb74ebee0e9a7cc0bed3a4841dd4ce2526850e993dab4554"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 8,
+    "name": "pick_up_the_chocolate_pudding_and_place_it_in_the_basket",
+    "bddl_sha256": "674ceabc400b7b16d46e8eaf678709d4a633235c7e0a80233775044fe38b19b0",
+    "initial_state_sha256": [
+      "b50e9e8d6831fdd4481179c1ce2f962065ef508c5d358045cfe9d26cc3547dad",
+      "f59e6162c8966e38f6cbae0ba82aff1e970c277dcd663e4281efbbf2be545807",
+      "107c71f9ec319ccd2d3a2c3c913c42f496296fcaca3704e6591731234027c71c",
+      "7092d935260321b438113ae153f346bac7b70b1cfd558cf7320c55b2e599fda4",
+      "56366d35e30e9b5f32ccc67d7028346ac61338322ff63fae3d60994d04799fe3"
+    ]
+  },
+  {
+    "suite": "libero_object",
+    "task": 9,
+    "name": "pick_up_the_orange_juice_and_place_it_in_the_basket",
+    "bddl_sha256": "6298533e7bcfb83e40779a77fda39216e8cd53f22bf1af6388585dad0abb0b50",
+    "initial_state_sha256": [
+      "c838e04306b82002976ee1b73da8a9d0f2d09cd7e51442e899862c51e19b0da9",
+      "1ce8b67bedcf53a4e0d7aa0cb8a7e22103512377a098ef7b5a22e4f8a5053f95",
+      "00837abe1ab8920dce823bcedccdf3a781bf367b44ce3a0e795507f47d1f210f",
+      "91eff25117c9e6bd0baa0fa193e605d6240c8f7724ec43300ef1e18f2c7284b9",
+      "fbde64a45eb1e6152b0c878ec58b3cd6f57f94ae3b1e89fc06e1fee7ca429e19"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 0,
+    "name": "open_the_middle_drawer_of_the_cabinet",
+    "bddl_sha256": "832ab48ec476807c767e8985666e295700f92d1f8daeae1c34eee1e75293769b",
+    "initial_state_sha256": [
+      "5a8f40221c0b59dfaa1061b36a49d4b10b0b47ffb82a1ac0b10080a2aa466ec4",
+      "7e37e0c67213d1237e09e0e5e381cd9bfd4b0bfc2013807549c0436c0e84e655",
+      "221658d3c5c68a7d9d4606eee6e2dedfc8a847525fd96da47b17615374007fe9",
+      "36ef92133a0b1fdc325122cea1e9804551985aedb8f2d1ca9860bc47e7b3cc6c",
+      "8d21166d2268969f06ab02bd0fe9fd4e70a2719bcd01e9b13e0d2c0f54c5dcb5"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 1,
+    "name": "put_the_bowl_on_the_stove",
+    "bddl_sha256": "c6812d6c988be830412aa6fc4801af04d60f8c4565d2625763b6a0f2b843a87f",
+    "initial_state_sha256": [
+      "5b071f3bb26bf0ce3b866621d8c9037d793aae5d25f9ae686a1d9048c4e56b88",
+      "47e9640340fe238deaea2e8cd7141ddbbea5ff9c12c6d6fe4fb3bd85548ae8f4",
+      "29144cbfef1149ae98f80bb0a34fe8b19f845f7f42e67242968cdd2fcd93fac4",
+      "6de861c585c961b030f8fb95277f91eaadb51aedb540fd69cdbd61bdfb60516d",
+      "55df5a569d33d371cf7f349c21dce75bdaa71b16ca79a9cdeb49660d2d09a786"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 2,
+    "name": "put_the_wine_bottle_on_top_of_the_cabinet",
+    "bddl_sha256": "2ef6f403a8451e216af44158c1a6c975cf8e5058ad02d78367ac0be443d096fe",
+    "initial_state_sha256": [
+      "c42c3f992ef65b98b14e2f505837a6a31516c00a1afabd0607aa6d70362ca6fd",
+      "308379f3c9ef898967cc893ecaad04955b92fb6d89fe719d899d570a551d984a",
+      "6ddde9726e27c4056cb694383550e8d8ec146a763be870e5b2f90283fc9c85ab",
+      "c8ad8f0a4d35df20b888544796e2a25ebc9e003be97030b265e6e32fbcf84ef6",
+      "465d4263dc092a9de83df02ffa1b2560ce2380dbcbee61b4f07eb6cf61b6bea7"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 3,
+    "name": "open_the_top_drawer_and_put_the_bowl_inside",
+    "bddl_sha256": "3056e4dc72ee590432cfb18c610fd077a572c8b8f256e45328031005dd0b6757",
+    "initial_state_sha256": [
+      "cbedd58789f8211e0c0435637d9c71750d5aa2ae3216b354ec03b6630c8caa78",
+      "acd41999401211210e0f72397b0675d42bf32cd44f1a92fe0ca1a187d034b1e4",
+      "afaf84a681a98d73f9e7c38ad570b8264e40f0cefb2f8a8cd263790e183bdddb",
+      "6bb12623e6db91295fe2bdb546e14e8e5554e7c313ddb7eaa11a2eda355504e7",
+      "381710192b1ff677bcd7d527862259d76ad3ba790085e016693ec9b39718baf8"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 4,
+    "name": "put_the_bowl_on_top_of_the_cabinet",
+    "bddl_sha256": "2ffba859a154f50c3c99ffb3420743fa5aa65c70bf7d4cd26f5bc81d07be5713",
+    "initial_state_sha256": [
+      "ed35dbd746e6efe630908bc93ea0659cc4c4cd10cd9c1c1ccc336fb2012cb5dd",
+      "a24dd942d9f6deb711a6954ba2dbccbfc86fa8b5b573ae8a376087b051fe62a0",
+      "c8e451ca23a16e21ded4cc462a3d2f820bf591a69454ad67e5d325a4cbc5e4b1",
+      "0d44d8c1a8245d107a8d5035f64d3e7c854538cb7e70d1c45c7724f8b743369b",
+      "9398eff6c3c84a1f1ca9eacabc431c412599ae44bf98619a791ad8bb7e7615f3"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 5,
+    "name": "push_the_plate_to_the_front_of_the_stove",
+    "bddl_sha256": "26f22f8ad39a4b2b344b049115c45661a877fa0b4821fb78246725e7e87d8c0b",
+    "initial_state_sha256": [
+      "cea30572c1ece1c5d5a53c64fef51544c3a02dbb6bf6bc06d02d3a03ea719aa7",
+      "5ce7bdf94e5030da4f2cdaecaf680d5607faec8614ca63773f1b67ef045d78bf",
+      "4c06373a64e22c7180a440eece4fa0d7ca88f8e4bf1b8614c618f9a98abc6cf9",
+      "3a96707ff7ce9e08324be529565c2ce5545c17092d83c16e16ffd0223a25ec8c",
+      "71116ae4b43c3c11ec4fb932fdfabd0a923cb3669b4f8508a96fa58284f2afa6"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 6,
+    "name": "put_the_cream_cheese_in_the_bowl",
+    "bddl_sha256": "81c54eace32b92466598103b3b6e8435ce90f10996ef18cec4a35fe6c4d31a98",
+    "initial_state_sha256": [
+      "485e7e27990ed3190e7ef7d9cf4bf2a79fb673410033ced06a99f184b74e9c95",
+      "966aeb21a670231379b9f10d6cbfc0eb03741996551ca163b501e5552fab08ac",
+      "01db4991cc2282e06676fe00d328d3ca3b714eb51f979031af8f05d18dc62468",
+      "822f8c247af917e9c9a50b3414a282ddbf5b5a5b411f5edea268ce634dad0f1a",
+      "4016120a0b2508eaa197b4ea353a3286ec8b6227b43dc295c0a34bfffbe6ff51"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 7,
+    "name": "turn_on_the_stove",
+    "bddl_sha256": "cbd2a0514d53226c5d09e17af40b22935d4cb6ff8fdaff0d55f555de1adecc13",
+    "initial_state_sha256": [
+      "7c961c34d695eb9099bdabaf55dfe7c856665830c84ca2555affd2788d70a8a3",
+      "6ed4fb1cdb6d5927c9218cefcee028079c38692f569c46fb11e9e83d0b26b01a",
+      "178344b07b2669d92ab02ea97992756d8df1ae410227474836defedef009ab64",
+      "94008c967b88bb232ba1e35eabfaebc4bcd763eaf416f380a82a600223e43e71",
+      "8d8e9907a0fd7bcb941400d89a2ccbb25dcd21609face577c094385858fa7019"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 8,
+    "name": "put_the_bowl_on_the_plate",
+    "bddl_sha256": "358b7781437e412c67d6a7648c1c28796b6b1bf117a25e61316cb8dfeb940e5b",
+    "initial_state_sha256": [
+      "66b1883f351c4c374c742516714921b55bd5eca7fd6f0fa8e2e0a86abff19ccd",
+      "458b021de5c47d7b23306d6e7f714ef3c2c55174aa4b2281816d6c3792f408cb",
+      "e92c3b68aa6af756d9ae0fbee9eefd5c04fb9d5739453b832e9707c8fe290096",
+      "3e49f03083abbbd947b9cf8d36193a508c65e7ea2da641cf1dc7682a72328a5c",
+      "37a6335a9df3d3d5a8fa5a41f6ddfb9097309c755a561166b5d4557ada91bf1f"
+    ]
+  },
+  {
+    "suite": "libero_goal",
+    "task": 9,
+    "name": "put_the_wine_bottle_on_the_rack",
+    "bddl_sha256": "3d3ee18139056aa3780572cde17b1c50dc20ae0d299403f65e514e8471ba0e8e",
+    "initial_state_sha256": [
+      "c12cdf642eb5c7b4fd04e4d3b55870f592770742ee5434ad8f80eda6168c9654",
+      "f1c7fced4b7c530aed064a27d8714e966e8a2a9c12a4abf8ba2bbb56b9d2a483",
+      "dda954afd150660760d0fb98ac9ba4a26f0cbc8b96385242673145d8aef60a35",
+      "0b4176247c74d2e333911df93b570f265c4b2939ecd6ab0029219140772c7976",
+      "3a6fc8356805dc8d4a8bb2758d078ae197c59a415d891aae8674fb70365a9b1c"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 0,
+    "name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+    "bddl_sha256": "2e661058917f683a25bce480015197f0a2c1911bcbc2b9dd9d947199069c9618",
+    "initial_state_sha256": [
+      "747b653b2ca1feeae8f3bd994880ce743730993ea5ce4bd003623e877f26b3bd",
+      "cf85ed132ae09bfad8798a3126b14879071228e0e2e7bd17c3e9d20e519cdb5a",
+      "be0c23f82748baf99eea1ecc4ff28eb82163945bc0bfffb509eeef0decced138",
+      "6929d3090ef9a3431c21b84539c99c3b481b09042bc6f3cf07ea0cc44fb65a70",
+      "376f48b75f50d4e1eff9e3f49f307de0bcfc44d2a081f5cb9c124cf985330c41"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 1,
+    "name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+    "bddl_sha256": "3f552805c7ab34c44debcf38a48b8131d6fee3011dd86c039650b84e0f77d058",
+    "initial_state_sha256": [
+      "5abdf8f466f490901dee9f931b32eb181b2928eaa17bb6379742f988581d564a",
+      "cd3e7f86ef217ee7b7d26cc505b3f56ea8f49664ef10f6749270dfcd39dd17a6",
+      "ab6bf2ca98e96f1692d8ec7a5b7ec25eee1ea61c57d45c2816ac3dcc938ea3ee",
+      "3e0d23df2cf22ae6e897e15a1739d5bf25474b4e33196644890b8485f0e880f5",
+      "d2cecde6c34039556fadf729cf7eb15d628b42094f6f0c092d9969c9cf659856"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 2,
+    "name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+    "bddl_sha256": "491835cc2eb6956f7ce3d1ee4e266377116168fe453e6529fe105e3b0333635d",
+    "initial_state_sha256": [
+      "9ae67aa7e7dd9987ecd1f2930e2b061fb66a414dd94e4b575417356a556cbd90",
+      "453d74e45f2f7141904a047d4237db1ee0b5576fe7a3f6c2cb4801e83bacb88a",
+      "8227fd36ba47ae92020986ff9b090acd500ddadcc057c66b04f8afe6fb4de2bb",
+      "53956839e3584f29993eb41169934902624a2f06d531b13bec4cd8f8cdd5de9d",
+      "0da0be61b3b3451f1ee4b9b911e9dcdc4fe9df1b95cdfb702eb3bfc9692ca446"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 3,
+    "name": "KITCHEN_SCENE4_put_the_black_bowl_in_the_bottom_drawer_of_the_cabinet_and_close_it",
+    "bddl_sha256": "5255fe54d7f25fad4dee8fa30a30033d8cb908f1708d953c91ab609264fb4fb8",
+    "initial_state_sha256": [
+      "ea2ad0a67ceabe915bc4744e8231bf7fe71bddb74ff8c67eae6c821ff82078a4",
+      "4163733ff3615b450aeebdbe916059b6c8b8f899330378fde0f00efc2f795efe",
+      "d4452cb6d293450305537a0160f36840b3351a6b381b8e487f3bf2db1b30399b",
+      "3304c9b023454e5f857390d21d8992a71c0491af9b7be42cd2b96d38fad671c9",
+      "54647cdea762ee9cf0ff2d80d17547e7a0a1c49606099f9d043c9c13308800ce"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 4,
+    "name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+    "bddl_sha256": "0c6749b920bff1e1efe47ffb0e0b801a3e6959a650e710f376dd2b812c74e865",
+    "initial_state_sha256": [
+      "4365b3c5a82da7f8818c11ef5fd494c4890c17c4c3e27948dc290a9ac2f08131",
+      "b55dd89278457f3c00d7b4d871dc8d64e84534e5a119dd35a53e5a152c831d6a",
+      "1d2fdd615bb32a097ad2781dd5e9203104555e54521dd9bce6eacbb5bf718e33",
+      "79a2ec18a6067d027a62de697a1931bf818dffc4dd7572c39c4426e122bd35d0",
+      "4da1e19512111404fa9dc3c87088cf26dce60996e1e9cf5b43ca04c73465a4e6"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 5,
+    "name": "STUDY_SCENE1_pick_up_the_book_and_place_it_in_the_back_compartment_of_the_caddy",
+    "bddl_sha256": "07ca32c940d70c065e870452ef9c63e6dfa1d8506e6a86cf9b3763f652ba2d9f",
+    "initial_state_sha256": [
+      "407c3d5eb11fd5b33bd2a6dea73a37415a99d7e72f0cc291074de29b1c63c37c",
+      "fbf82707bd0a7721f0e118ac32aad30182e487e7a940bec7128ad6f18457e139",
+      "83ff554be370e25fb3b049d5c3db3f2cf4f20524a0eab8beeda093c6a81bad66",
+      "72e9938805b4da92baeb254ab7611081832edbb30e3f07c8136e1ea8a00fa235",
+      "825a43323d564777617871b44f4c0f871a263f5aac13b1d04f204cc4957134e8"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 6,
+    "name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+    "bddl_sha256": "dbc9464b424cdc9b771b92d0b8a8c185b1b539f6a4133b323dc858bcf8f6a9c2",
+    "initial_state_sha256": [
+      "533340bd717874417ec05cd3d626b05c9464795440da917ce21e8a0a6fc50f72",
+      "606fa88e4dcd86bf0c84c6c2954eb002166e93037b39e7ed893f0c41e7a15577",
+      "872632a4cac778497e06fa377164090997928a7b5bfb7783d112807e03c5fa99",
+      "3d019c0aa2cfc2ea5d7cc5a49fc727bcb0dd0c6164a273733a6c47f21db80e43",
+      "b0fe30015c5ff58f4b9263d20fdfb51c6a5502097b37ce75a34fb44ce7ba4fbd"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 7,
+    "name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+    "bddl_sha256": "e27ab37f512fe42e35771d6130f531e6a9656929e7b4c60b348b81360cf5675d",
+    "initial_state_sha256": [
+      "d02d4d5533fbcab414bfc49e4896182cd40e173dfa6316e39a2b418e902ae826",
+      "44f0d75550c414e622b03a43e56497e8c9bd0fe4a494c1d2b9c0c9625ed80120",
+      "9e8c129dc9a5047a34f8772063534c9948acdba167fee37ece92b48f33ea4b34",
+      "2f4104e7e2996340ed513d08c011e119ca975165933374a1d1d67e78bea6abee",
+      "8a0c2af93cde820ada3c3849d6b732233a61c05a82d655ef26fda87a7d85e708"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 8,
+    "name": "KITCHEN_SCENE8_put_both_moka_pots_on_the_stove",
+    "bddl_sha256": "ae1299a707d3e810096ad648948c517de40474bcdacca93a15e17d191e34454a",
+    "initial_state_sha256": [
+      "61a34575b44313156895ce73996cf18dd243c396572fd0e1cd476e0e9fbe70af",
+      "cf1b859b0688c3c3ea64fba0ab5bd29b88ff7f28dc5893df4cb7564ac4db8cce",
+      "9f3bbe14f940c66de58d1dbecf0b5a2af12b48cbb93deec15c094fe4a9f5323a",
+      "f53dd32b70bd23ffa2dd5b1e41267ba1c59e88e245857be8b71d5f9b93865763",
+      "02b2b6ed14553a05557e097c0a838ce6f5d5aa05c839844aef81678752dace65"
+    ]
+  },
+  {
+    "suite": "libero_10",
+    "task": 9,
+    "name": "KITCHEN_SCENE6_put_the_yellow_and_white_mug_in_the_microwave_and_close_it",
+    "bddl_sha256": "456d145f92be049f445fc77673dc583d9d17ea7afe92f6ffcb2fd1fa5565d420",
+    "initial_state_sha256": [
+      "ea7db2b727794199cfa1e42f8d924c5841e4af18716a392adf30d5517114c87f",
+      "8a1664e433521b5f995c9840cd9d41bf796b38742e57ad57786d67076de8b0cd",
+      "1cc5eefc998751de4d0e86462742176ed71a470e4846013c1a92ac47cefb9b67",
+      "ac150060868f6d48b6b53f5d8f07e71e04d3ca8883ff52edae6b0f543c05659a",
+      "e3ba923c504addfab7f0ef464e30c4de9e70f02106fdd714ce793dda722233f7"
+    ]
+  }
+]

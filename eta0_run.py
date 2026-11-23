@@ -7,14 +7,16 @@ import logging
 import os
 import random
 import socket
+import ssl
 import time
 import urllib.error
 import urllib.request
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
+from executor_led import EpisodeBudget, ExecutorLed
 from harness import run
-from hierarchy import Hierarchy
+from libero_semantics import SemanticEpisode, use_libero_checkout
 from rollout_context import HistoryCompactor, bounded_cleanup
 
 UPPER_RETRIES = 4
@@ -54,6 +56,12 @@ class ChatEndpoint:
         self.direct = direct
         self.allowed_models = allowed_models
         self.retries = retries
+        self.chat_calls = 0
+        self.chat_seconds = 0.0
+
+    def remaining(self):
+        deadline = self.deadline() if callable(self.deadline) else self.deadline
+        return deadline - time.monotonic()
 
     def post(self, url, payload):
         headers = {"Content-Type": "application/json", "User-Agent": "ETA0-System/0.1"}
@@ -63,7 +71,7 @@ class ChatEndpoint:
         handlers = [urllib.request.ProxyHandler({})] if self.direct else []
         opener = urllib.request.build_opener(*handlers)
         for attempt in range(1, self.retries + 2):
-            remaining = self.deadline - time.monotonic()
+            remaining = self.remaining()
             if remaining <= 0:
                 raise TimeoutError("episode wall time exhausted")
             retry_after = 0
@@ -85,7 +93,15 @@ class ChatEndpoint:
             except (OSError, http.client.IncompleteRead) as exc:
                 cause = exc.reason if isinstance(exc, urllib.error.URLError) else exc
                 if not (
-                    isinstance(cause, (TimeoutError, ConnectionError, http.client.IncompleteRead))
+                    isinstance(
+                        cause,
+                        (
+                            TimeoutError,
+                            ConnectionError,
+                            http.client.IncompleteRead,
+                            ssl.SSLEOFError,
+                        ),
+                    )
                     or isinstance(cause, socket.gaierror)
                     and cause.errno == socket.EAI_AGAIN
                 ):
@@ -96,7 +112,7 @@ class ChatEndpoint:
             if attempt > self.retries:
                 raise failure
             delay = max(retry_after, 2 ** (attempt - 1) + random.random())
-            if delay >= self.deadline - time.monotonic():
+            if delay >= self.remaining():
                 raise failure
             logging.getLogger(__name__).warning(
                 "Model %s attempt %d/%d failed (%s), retrying in %.1fs",
@@ -109,9 +125,14 @@ class ChatEndpoint:
             time.sleep(delay)
 
     def chat(self, messages, **options):
-        reply = self.post(
-            self.url + "/chat/completions", dict(model=self.model, messages=messages, **options)
-        )
+        self.chat_calls += 1
+        start = time.monotonic()
+        try:
+            reply = self.post(
+                self.url + "/chat/completions", dict(model=self.model, messages=messages, **options)
+            )
+        finally:
+            self.chat_seconds += time.monotonic() - start
         if self.allowed_models and reply.get("model") not in self.allowed_models:
             raise ValueError("upper endpoint returned a model outside the configured allowlist")
         return reply
@@ -132,7 +153,8 @@ class ChatEndpoint:
 
 def upper_endpoint(boyue_config, deadline):
     if boyue_config is not None:
-        config = json.loads(boyue_config.read_text())["boyue"]
+        config = json.loads(boyue_config.read_text())
+        config = config.get("boyue", config)
         allowed = config.get("allowed_returned_models", [config["model"]])
         if not (isinstance(allowed, list) and allowed and all(isinstance(m, str) for m in allowed)):
             raise ValueError("invalid Boyue allowed_returned_models")
@@ -218,8 +240,8 @@ def main():
     p.add_argument(
         "--mode",
         choices=["base", "plan", "judge", "teacher"],
-        default="teacher",
-        help="cumulative ablation: executor, +plan, +supervision, +one-shot",
+        default="judge",
+        help="role preset; individual switches override it",
     )
     p.add_argument("--instruction", help="user wording for an intent trial")
     p.add_argument(
@@ -227,34 +249,59 @@ def main():
         action="store_true",
         help="use one direct generation after a truncated thinking reply",
     )
-    p.add_argument("--interactive", action="store_true", help="answer planner clarification")
+    for role in ("planner", "supervisor", "teacher"):
+        p.add_argument("--" + role, action=argparse.BooleanOptionalAction)
+    p.add_argument("--upper-wall-seconds", type=int, default=900)
+    p.add_argument("--max-upper-calls", type=int, default=8)
+    p.add_argument("--stall-failures", type=int, default=3)
+    p.add_argument("--stall-plateau", type=int, default=8)
+    p.add_argument("--task-length", choices=["auto", "long", "short"], default="auto")
+    p.add_argument("--instruction-mode", choices=["original", "revised"], default="revised")
+    p.add_argument("--completion-query", action=argparse.BooleanOptionalAction, default=None)
+    p.add_argument(
+        "--progress-query-ablation",
+        action="store_true",
+        help="cache native evidence in both base arms and expose it only on request",
+    )
+    p.add_argument("--libero-source-root", type=Path, default=os.environ.get("ETA0_LIBERO_ROOT"))
     p.add_argument(
         "--upstream-base",
         action="store_true",
         help="use the frozen upstream module in the paired evaluation bundle",
     )
     args = p.parse_args()
-    if args.upstream_base and args.mode != "base":
-        p.error("--upstream-base requires --mode base")
-    deadline = time.monotonic() + args.wall_seconds
+    roles = dict(
+        planner=args.mode != "base",
+        supervisor=args.mode in {"judge", "teacher"},
+        teacher=args.mode == "teacher",
+    )
+    roles.update({r: getattr(args, r) for r in roles if getattr(args, r) is not None})
+    if args.progress_query_ablation and (
+        args.mode != "base" or any(roles.values()) or args.upstream_base
+    ):
+        p.error("--progress-query-ablation requires the executor-only base harness")
+    if args.upstream_base and (args.mode != "base" or any(roles.values()) or args.completion_query):
+        p.error("--upstream-base requires base mode without advisory roles or completion query")
+    if min(args.max_upper_calls, args.stall_failures, args.stall_plateau) < 1:
+        p.error("call and stall thresholds must be positive")
+    completion_enabled = (
+        not args.upstream_base if args.completion_query is None else args.completion_query
+    )
+    collect_progress = completion_enabled or args.progress_query_ablation
+    progress_access = "default"
+    if args.progress_query_ablation:
+        progress_access = "on_request" if completion_enabled else "hidden"
+    budget = EpisodeBudget(args.wall_seconds, args.upper_wall_seconds)
     config = json.loads(args.executor_client.read_text())
     lower = ChatEndpoint(
-        config["base_url"], config["model"], config["api_key"], deadline, direct=True
+        config["base_url"], config["model"], config["api_key"], budget.lower_deadline, direct=True
     )
-    hierarchy = None
-    if args.mode != "base":
-        upper = upper_endpoint(args.boyue_config, deadline)
-        hierarchy = Hierarchy(
-            upper.chat,
-            teacher=args.mode == "teacher",
-            supervise=args.mode in {"judge", "teacher"},
-            clarify=input if args.interactive else None,
-        )
-
     # The pinned adapter loads its simulator and PhysLM dependencies in this interpreter.
+    args.output.mkdir(parents=True, exist_ok=False)
+    if args.libero_source_root:
+        use_libero_checkout(args.libero_source_root, args.output)
     from rollout_libero_minimal import ACTION_PROMPT, LiberoAdapter
 
-    args.output.mkdir(parents=True, exist_ok=False)
     adapter = LiberoAdapter(
         args.task,
         args.initial_index,
@@ -264,20 +311,62 @@ def main():
         suite_name=args.suite,
     )
     try:
+        native_goal = adapter.instruction
+        semantic = None
+        if args.instruction_mode == "revised" or collect_progress or roles["planner"]:
+            semantic = SemanticEpisode(
+                adapter, args.instruction_mode, collect_progress, args.libero_source_root
+            )
+            adapter = semantic
         task = args.instruction or adapter.instruction
+        long_task = (
+            bool(semantic and semantic.long_task)
+            if args.task_length == "auto"
+            else args.task_length == "long"
+        )
+        need_upper = (roles["planner"] and long_task) or roles["teacher"] or roles["supervisor"]
+        upper = (
+            upper_endpoint(args.boyue_config, lambda: budget.upper_deadline) if need_upper else None
+        )
+        hierarchy = (
+            ExecutorLed(
+                upper.chat,
+                budget,
+                planner=roles["planner"],
+                supervise=roles["supervisor"],
+                teacher=roles["teacher"],
+                long_task=long_task,
+                failures=args.stall_failures,
+                plateau=args.stall_plateau,
+                max_upper_calls=args.max_upper_calls,
+            )
+            if upper
+            else None
+        )
         (args.output / "run.json").write_text(
             json.dumps(
                 dict(
                     mode=args.mode,
                     recover_length=args.recover_length,
                     user_goal=task,
-                    native_goal=adapter.instruction,
+                    native_goal=native_goal,
+                    instruction_mode="user" if args.instruction else args.instruction_mode,
+                    benchmark_goal=adapter.instruction,
+                    completion_query=completion_enabled,
+                    progress_access=progress_access,
+                    pack_version=semantic.pack.version if semantic else None,
+                    pack_sha256=semantic.pack.sha256 if semantic else None,
+                    long_task=long_task,
+                    roles=roles,
+                    stall_failures=args.stall_failures,
+                    stall_plateau=args.stall_plateau,
+                    upper_wall_seconds=args.upper_wall_seconds,
+                    max_upper_calls=args.max_upper_calls,
                     executor=lower.model,
                     upper=upper.model if hierarchy else None,
                     max_actions=args.max_actions,
                     max_calls=args.max_calls,
                     wall_seconds=args.wall_seconds,
-                    review_every=hierarchy.review_every if hierarchy else None,
                 ),
                 ensure_ascii=False,
             )
@@ -304,9 +393,9 @@ def main():
         if hierarchy and hierarchy.teacher:
             prompt = prompt.replace(
                 "No demonstration or target oracle is provided.",
-                "A hypothetical teacher demonstration may accompany each subgoal.",
+                "A hypothetical recovery example may be provided after repeated difficulty.",
             )
-        remaining = deadline - time.monotonic()
+        remaining = budget.lower_deadline() - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("episode deadline expired during initialization")
         options = dict(
@@ -325,12 +414,23 @@ def main():
             try:
                 result = upstream_run(adapter, execute, **options)
             except TimeoutError:
-                if time.monotonic() < deadline:
+                if time.monotonic() < budget.lower_deadline():
                     raise
                 result = {"reason": "wall_time_budget", "success": bool(adapter.success())}
                 (args.output / "rollout/RESULT.json").write_text(json.dumps(result))
         else:
-            result = run(adapter, execute, hierarchy=hierarchy, wall_time_s=remaining, **options)
+            result = run(
+                adapter,
+                execute,
+                hierarchy=hierarchy,
+                budget=budget,
+                progress_access=progress_access,
+                **options,
+            )
+        result.update(
+            budget.metrics(), lower_chat_calls=lower.chat_calls, lower_chat_s=lower.chat_seconds
+        )
+        (args.output / "rollout/RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
         print(json.dumps(result, ensure_ascii=False))
     finally:
         (args.output / "cleanup.json").write_text(json.dumps(bounded_cleanup(adapter.close)))

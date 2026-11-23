@@ -1,12 +1,14 @@
 # ETA0 System
 
-给 fullmix step2500 的 27B 具身模型增加长程任务规划、视觉监督和单样例上下文学习。一次用户请求对应一次环境 reset。上层商用视觉模型维护目标和进度，27B 根据当前子任务、外部相机、腕部相机及实测状态选择动作。整个过程共用 benchmark 的动作校验、控制器和原生成功条件。
+给 fullmix step2500 的 27B 具身模型增加长程任务规划、视觉监督和单样例上下文学习。一次用户请求对应一次环境 reset。27B 持有完整目标，自主依据外部相机、腕部相机及实测状态选择动作。默认仅给长任务一份简短计划，在连续停滞时请求视觉监督。整个过程共用 benchmark 的动作校验、控制器和原生成功条件。
 
-[系统设计与评测方案](docs/system-design.md) · [基座使用说明](README.base.md)
+[当前控制策略、消融参数与轨迹回放](docs/executor-led.md) · [第一版系统设计与评测方案](docs/system-design.md) · [基座使用说明](README.base.md)
+
+27B 可以自主调用 `check_task_completion`，读取环境最近一次原生评估中各项目标的满足情况，再决定下一步。所有任务使用同一个工具协议。仅测试这项能力时，可用 `--mode base --completion-query` 和 `--mode base --no-completion-query` 做配对，两个配置都只使用 27B。正式的 40 任务 × 5 初态比较使用[进度查询配对消融方案](docs/progress-query-ablation.md)，它统一了两组的回执采集和提前 finish 反馈。
 
 ## 本地体验
 
-需要 Python 3.10 或以上版本。下列示例在同一个模拟 episode 中执行两个短任务，展示 supervisor 如何切换目标，以及每次切换后 teacher 给 27B 的指导内容。模型回复和控制器均由脚本模拟。
+需要 Python 3.10 或以上版本。下列历史示例使用第一版分层控制，在同一个模拟 episode 中执行两个短任务，展示 supervisor 如何切换目标，以及每次切换后 teacher 给 27B 的指导内容。模型回复和控制器均由脚本模拟。
 
 ```bash
 uv venv --python 3.12
@@ -19,11 +21,10 @@ uv pip install -e '.[dev]'
 
 ## 在 YICloud 运行一个 LIBERO episode
 
-当前部署使用 `fdj-infra` 项目的独立作业 `j-1795160878-602322`。服务名为 `eta0-system-fullmix-2500`，本次就绪地址为 `http://172.19.138.62:18680/v1`。访问范围是具备 Pod 网络和相同 GPFS 挂载的集群客户端。启动器在图像验收通过后输出 `ETA0_READY`，其中的 `client_file` 指向该副本的连接信息和凭据。该文件按运行用户私有权限保存。下列命令在带有本仓库代码、对应挂载和仿真环境的集群容器内执行。
+服务名为 `eta0-system-fullmix-2500`。启动器完成图像验收后输出 `ETA0_READY`，其中的 `client_file` 指向该副本的私有连接文件。开发机和 CPU 仿真作业均需挂载同一份 GPFS。以下示例使用本轮配置的第一个副本，须先等它通过验收。
 
 ```bash
-cd /root/tests/inference/eta0-system/releases/26be2b0b8150
-export ETA0_EXECUTOR_CLIENT=/root/tests/inference/eta0-system/rjob-8d131ad6dcf558ed-88c9a4c797eb2ec1-0/client.json
+export ETA0_EXECUTOR_CLIENT=/root/tests/inference/eta0-system/cpu-remote-cc57436d67/replica-1/client.json
 python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode base --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-base
 ```
@@ -35,7 +36,7 @@ python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode teacher --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-teacher
 ```
 
-`--mode` 支持四种累加设置。用 `base` 单独调用 27B；`plan` 加入规划，由执行器报告子任务结束；`judge` 加入视觉监督；`teacher` 再为每个新子任务生成一段示范。对用户意图测试可传 `--instruction` 改写用户措辞，原生任务和判定仍来自 adapter。如果 27B 因超长思考返回 length，可启用 `--recover-length`，在同一观测上用一次关闭 thinking 的生成来恢复。交互场景使用 `--interactive` 回答澄清问题，批量模式会将问题写入结果。
+默认 `--mode judge` 开启长任务规划和停滞监督。使用 `--mode base --teacher` 可单独评估停滞后的示范；`--planner`、`--supervisor`、`--teacher` 及各自的 `--no-*` 可自由组合。`--instruction` 可覆盖用户措辞，`--recover-length` 可在思考被截断后尝试一次直接生成。新版默认加载 0.3.2 revised 指令并启用原生完成度查询。仿真解释器依赖与 `--libero-source-root` 的设置见[接入说明](docs/executor-led.md)。
 
 `deploy/run_libero.py` 从冻结评测计划读取解释器、PhysLM 路径和仿真环境变量。其他 benchmark 可以通过 `harness.run(benchmark, policy, hierarchy=...)` 接入。
 
@@ -63,6 +64,5 @@ python3 deploy/boyue_episode.py --task 3 --initial-index 0
 
 ```bash
 python3 deploy/submit.py
-yicloud job replicas j-1795160878-602322 --project fdj-infra
-yicloud job logs j-1795160878-602322 --project fdj-infra --keyword ETA0_READY
+yicloud workspace get ws-8359c2f5cfd7da75 --project fdj-infra --zone-id cn-shanghai-a
 ```

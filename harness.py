@@ -33,6 +33,12 @@ class Observation:
 
 
 class Benchmark(Protocol):
+    """Adapters may expose a cached `completion` receipt for the current physical state.
+
+    Use a pending receipt before native evidence exists and None (or omit the
+    attribute) to disable the tool. Reading a receipt must not step the simulator.
+    """
+
     def observe(self) -> Observation: ...
     def validate_action(self, action: dict, observation: Observation) -> None:
         """Reject with ValueError before any physics; verify schema, units and bounds."""
@@ -82,6 +88,8 @@ def run(
     native_finish_feedback=False,
     hierarchy=None,
     wall_time_s=None,
+    budget=None,
+    progress_access="default",
 ):
     """Policy(messages) returns a complete chat-completions response.
 
@@ -105,12 +113,32 @@ def run(
     if wall_time_s is not None and wall_time_s <= 0:
         raise ValueError("wall_time_s must be positive")
     deadline = time.monotonic() + wall_time_s if wall_time_s is not None else float("inf")
+
+    def out_of_time():
+        if budget:
+            return budget.clock() >= budget.lower_deadline()
+        return time.monotonic() >= deadline
+
     transition = trigger = None
     executing = False
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=False)
     messages = [{"role": "system", "content": action_prompt + "\n" + QUERY_NOTICE}]
-    calls = actions = rejected = queries = local_queries = 0
+    if progress_access not in {"default", "on_request", "hidden"}:
+        raise ValueError("unknown progress access mode")
+    query_available = (
+        progress_access != "hidden" and getattr(benchmark, "completion", None) is not None
+    )
+    if query_available:
+        messages[0]["content"] += (
+            "\nOptional task progress tool: to see which goal conditions the environment "
+            "last observed as satisfied, send "
+            '{"stage":"check_task_completion","observation_id":"CURRENT"}. '
+            "Pending or null means unknown. Choose your next action from the current "
+            "observation. Reading the same observation returns the same evidence, advances "
+            "zero ticks, and shares the visual query limit."
+        )
+    calls = actions = rejected = queries = completion_queries = local_queries = 0
     observation_messages = []
     observation = None
 
@@ -129,9 +157,12 @@ def run(
             actions=actions,
             rejections=rejected,
             queries=queries,
+            completion_queries=completion_queries,
         )
         if hierarchy is not None:
             result["upper_calls"] = hierarchy.calls
+        if budget:
+            result.update(budget.metrics())
         if detail:
             result["detail"] = detail
         (out / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -153,7 +184,7 @@ def run(
                         measured_state=final.state,
                     )
                 return finish("native_success")
-            if time.monotonic() >= deadline:
+            if out_of_time():
                 return finish("wall_time_budget")
             if calls >= max_calls or actions >= max_actions:
                 return finish("call_budget" if calls >= max_calls else "action_budget")
@@ -200,6 +231,11 @@ def run(
                             for part in messages[index]["content"]
                         ]
                 event("observation", context=context, folder=str(folder.name))
+                completion = getattr(benchmark, "completion", None)
+                if completion is not None:
+                    context = dict(context, completion=completion)
+                    if not actions:
+                        event("completion_evidence", receipt=completion)
 
             inference = messages
             if hierarchy is not None:
@@ -212,11 +248,19 @@ def run(
                 except ControlStop as stop:
                     return finish(stop.reason, stop.detail)
                 trigger = None
-                inference = [
-                    dict(role="system", content=messages[0]["content"] + "\n" + guidance),
-                    *messages[1:],
-                ]
-            if time.monotonic() >= deadline:
+                if guidance and getattr(hierarchy, "advisory_only", False):
+                    # Keep the action contract intact. Guidance lives only in this request.
+                    latest = messages[-1]
+                    inference = [
+                        *messages[:-1],
+                        dict(latest, content=[text(guidance), *latest["content"]]),
+                    ]
+                elif guidance:
+                    inference = [
+                        dict(role="system", content=messages[0]["content"] + "\n" + guidance),
+                        *messages[1:],
+                    ]
+            if out_of_time():
                 return finish("wall_time_budget")
             wire = (
                 context_compactor.prepare(inference)
@@ -259,6 +303,8 @@ def run(
                             observation_id=observation.robot.observation_id,
                             executed_ticks=0,
                         )
+                        if completion is not None and progress_access == "default":
+                            feedback["completion"] = completion
                         event("finish_feedback", feedback=feedback)
                         if successful:
                             return finish("native_success")
@@ -276,6 +322,21 @@ def run(
                         )
                         continue
                     return finish("model_finish")
+                if action.get("stage") == "check_task_completion":
+                    if not query_available or completion is None:
+                        raise ValueError("task progress tool unavailable in this episode")
+                    if set(action) != {"stage", "observation_id"}:
+                        raise ValueError(
+                            "completion query requires exactly stage and observation_id"
+                        )
+                    if local_queries >= max_queries_per_observation:
+                        raise ValueError("query budget for this observation exhausted")
+                    queries += 1
+                    completion_queries += 1
+                    local_queries += 1
+                    event("completion_query", request=action, receipt=completion, executed_ticks=0)
+                    messages.append({"role": "user", "content": [text(completion)]})
+                    continue
                 if action.get("stage") in QUERY_STAGES:
                     if local_queries >= max_queries_per_observation:
                         raise ValueError("query budget for this observation exhausted")
@@ -314,7 +375,7 @@ def run(
                 continue
             # Deliberately outside the validation handler. A physical failure is
             # never converted into a zero-execution validation error or retried.
-            if time.monotonic() >= deadline:
+            if out_of_time():
                 return finish("wall_time_budget")
             event("action_started", action=action)
             executing = True
@@ -323,6 +384,8 @@ def run(
             actions += 1
             transition = dict(action=action, feedback=feedback)
             event("execution", feedback=feedback)
+            if getattr(benchmark, "completion", None) is not None:
+                event("completion_evidence", receipt=benchmark.completion)
             if isinstance(feedback, dict) and any(
                 feedback.get(k) for k in ("interrupted", "error")
             ):
@@ -330,7 +393,7 @@ def run(
             messages.append({"role": "user", "content": [text({"execution": feedback})]})
             observation = None
     except TimeoutError:
-        if not executing and time.monotonic() >= deadline:
+        if not executing and out_of_time():
             return finish("wall_time_budget")
         event("infrastructure_error", actions_completed=actions)
         raise

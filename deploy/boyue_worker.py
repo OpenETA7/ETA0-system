@@ -65,12 +65,14 @@ def run(options):
             [
                 sys.executable,
                 str(src / options.get("entrypoint", "deploy/run_libero.py")),
-                "--boyue-config",
+                "--check-upper" if options.get("check_model") else "--boyue-config",
                 str(config),
                 *options["episode_args"],
             ],
             check=True,
-            timeout=None if options.get("entrypoint") else 2850,
+            timeout=None
+            if options.get("entrypoint")
+            else 2850 + options.get("upper_wall_seconds", 0),
         )
 
 

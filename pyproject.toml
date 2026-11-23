@@ -13,10 +13,11 @@ dependencies = ["numpy>=1.24", "Pillow>=10"]
 eta0-run = "eta0_run:main"
 
 [project.optional-dependencies]
+libero = ["openeta-bench @ git+https://github.com/OpenETA7/OpenETA-Benchmark.git@c39883cd94c3b413c19e048ab82317fc6e024fa1"]
 dev = ["pytest>=8", "ruff>=0.9"]
 
 [tool.setuptools]
-py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "eta0_run"]
+py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "executor_led", "libero_semantics", "eta0_run"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

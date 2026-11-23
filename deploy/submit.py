@@ -12,6 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--submit", action="store_true")
     parser.add_argument("--name", default="eta0-system-fullmix-tp2")
+    parser.add_argument("--node", help="require this physical host for the persistent TP2")
     parser.add_argument("--cli", default="yicloud", help="CLI executable or wrapper")
     args = parser.parse_args()
     source = Path(__file__).with_name("serve.py").read_bytes()
@@ -58,8 +59,10 @@ def main():
         "-c",
         "--command-argv",
         start,
-        "--submit" if args.submit else "--dry-run",
     ]
+    if args.node:
+        command.extend(["--positive-tag", "node/" + args.node])
+    command.append("--submit" if args.submit else "--dry-run")
     data = json.loads(subprocess.check_output(command, text=True))
     for spec in data.get("TaskSpecs", {}).values():
         spec["Command"] = ["python3", "serve.py", "sha256=" + hashlib.sha256(source).hexdigest()]

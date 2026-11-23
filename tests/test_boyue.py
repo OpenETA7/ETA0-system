@@ -226,3 +226,16 @@ def test_cloud_handoff_delivers_profile_without_secret_in_job_specs(tmp_path, mo
         for worker in workers:
             worker.kill()
             worker.wait()
+
+
+def test_official_deepseek_profile_preserves_credential_origin(tmp_path):
+    profile = tmp_path / "upper.json"
+    profile.write_text(
+        json.dumps(
+            dict(base_url="https://api.deepseek.com", model="deepseek-flash", api_key="test")
+        )
+    )
+    client = upper_endpoint(profile, deadline=0)
+    assert client.url == "https://api.deepseek.com"
+    assert client.model == "deepseek-flash"
+    assert client.allowed_models == ["deepseek-flash"]

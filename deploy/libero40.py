@@ -25,6 +25,31 @@ HERE = Path(__file__).resolve().parent
 WALL = 2700
 
 
+def harness_options(parser):
+    for role in ("planner", "supervisor", "teacher"):
+        parser.add_argument("--" + role, action=argparse.BooleanOptionalAction)
+    parser.add_argument("--upper-wall-seconds", type=int)
+    parser.add_argument("--libero-source-root")
+    parser.add_argument("--completion-query", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--upstream-base", action=argparse.BooleanOptionalAction, default=None)
+
+
+def harness_settings(args):
+    settings = dict(
+        planner=True,
+        supervisor=True,
+        teacher=False,
+        upper_wall_seconds=900,
+        libero_source_root=None,
+        completion_query=True,
+        upstream_base=False,
+    )
+    settings.update({k: getattr(args, k) for k in settings if getattr(args, k, None) is not None})
+    if settings["upper_wall_seconds"] < 0:
+        raise ValueError("upper wall budget must be nonnegative")
+    return settings
+
+
 def cases():
     rng = random.Random(SEED)
     task_ids = [rng.sample(range(10), 10) for _ in SUITES]
@@ -121,7 +146,7 @@ def run_episode(args, client, slot, case, mode):
     folder.mkdir(parents=True, exist_ok=True)
     cmd = [
         sys.executable,
-        str(HERE / "run_libero.py"),
+        str(getattr(args, "episode_runner", HERE / "run_libero.py")),
         "--mode",
         mode,
         "--suite",
@@ -144,16 +169,33 @@ def run_episode(args, client, slot, case, mode):
         "--max-calls",
         "360",
     ]
+    settings = getattr(args, "harness_settings", harness_settings(args))
+    if getattr(args, "progress_query_ablation", False):
+        cmd.extend(["--progress-query-ablation", "--instruction-mode", "revised"])
+    upper_wall = 0
+    if settings is not None:
+        if settings.get("libero_source_root"):
+            cmd.extend(["--libero-source-root", settings["libero_source_root"]])
+        # Older manifests kept the runner's default. Frozen upstream has no such tool.
+        if "completion_query" in settings and (mode != "base" or not settings.get("upstream_base")):
+            cmd.append(
+                "--completion-query" if settings["completion_query"] else "--no-completion-query"
+            )
+        if mode == "teacher":
+            for role in ("planner", "supervisor", "teacher"):
+                cmd.append(("--" if settings[role] else "--no-") + role)
+            upper_wall = settings["upper_wall_seconds"]
+            cmd.extend(["--upper-wall-seconds", str(upper_wall)])
     if mode == "teacher":
         cmd += ["--boyue-config", str(args.boyue_config)]
-    else:
+    elif settings is None or settings.get("upstream_base"):
         cmd += ["--upstream-base"]
     print(f"LIBERO40_START {suite}/{task} {mode} replica={slot}", flush=True)
     start = time.monotonic()
     with (folder / f"{mode}.log").open("w") as log:
         proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
-            proc.wait(timeout=WALL + 150)
+            proc.wait(timeout=WALL + upper_wall + 150)
         except subprocess.TimeoutExpired:
             stop_group(proc)
     wall = time.monotonic() - start
@@ -166,7 +208,9 @@ def run_episode(args, client, slot, case, mode):
     meta_file = episode / "simulation/task.json"
     metadata = json.loads(meta_file.read_text()) if meta_file.is_file() else {}
     events = episode / "rollout/events.jsonl"
-    upper_s = 0
+    upper_times = Counter()
+    upper_models = set()
+    progress_events = 0
     if events.is_file():
         with events.open() as stream:
             for line in stream:
@@ -175,7 +219,10 @@ def run_episode(args, client, slot, case, mode):
                 except ValueError:
                     continue  # a killed process may leave a partial final event
                 if entry["event"] == "upper_response":
-                    upper_s += entry["elapsed_s"]
+                    upper_times[entry["role"]] += entry["elapsed_s"]
+                    upper_models.add(entry["model"])
+                elif entry["event"] == "completion_query":
+                    progress_events += 1
     row = dict(
         suite=suite,
         task=task,
@@ -184,16 +231,25 @@ def run_episode(args, client, slot, case, mode):
         initial_index=args.initial_index,
         seed=SEED,
         elapsed_s=round(wall, 3),
-        upper_response_s=round(upper_s, 3),
+        upper_response_s=round(sum(upper_times.values()), 3),
+        upper_role_s={role: round(seconds, 3) for role, seconds in upper_times.items()},
+        upper_models=sorted(upper_models),
         returncode=proc.returncode,
         initial_view_sha256=view_hash,
         initial_state_sha256=metadata.get("initial_state_sha256"),
         bddl_sha256=metadata.get("bddl_sha256"),
         reason=result.get("reason", "incomplete"),
         success=result.get("success"),
+        lower_wall_s=result.get("lower_wall_s"),
+        upper_wall_s=result.get("upper_wall_s"),
+        lower_chat_s=result.get("lower_chat_s"),
+        lower_chat_calls=result.get("lower_chat_calls"),
         calls=result.get("calls"),
+        completion_queries=result.get("completion_queries"),
         actions=result.get("actions"),
     )
+    if getattr(args, "progress_query_ablation", False):
+        row["completion_query_events"] = progress_events
     write_json(folder / f"{mode}.result.json", row)
     print("LIBERO40_TRIAL " + json.dumps(row), flush=True)
     return row
@@ -269,12 +325,21 @@ def summarize(rows):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--replicas", type=int, choices=[2, 3, 4], default=4)
+    p.add_argument("--replicas", type=int, choices=[1, 2, 3, 4], default=4)
     p.add_argument("--executor-client", type=Path)
+    p.add_argument("--remote-client", type=Path, action="append", default=[])
     for name in ["boyue-config", "output"]:
         p.add_argument("--" + name, required=True, type=Path)
     p.add_argument("--initial-index", required=True, type=int)
+    harness_options(p)
     args = p.parse_args()
+    args.harness_settings = harness_settings(args)
+    if args.remote_client and (
+        len(set(args.remote_client)) != args.replicas
+        or len(args.remote_client) != args.replicas
+        or args.executor_client
+    ):
+        p.error("remote execution requires one distinct client file per replica")
     args.output.mkdir(parents=True, exist_ok=False)
     tasks = cases()
     lanes = 2 * args.replicas
@@ -282,17 +347,41 @@ def main():
         args.output / "manifest.json",
         dict(
             tasks=tasks,
+            executor_led=args.harness_settings,
             modes=MODES,
             seed=SEED,
             initial_index=args.initial_index,
             upstream="cd6fcd91d19472ce24ea4dbd226930bafbf907c5",
             replicas=args.replicas,
             sim_workers=2 * lanes,
+            remote_clients=[str(p) for p in args.remote_client],
             wall_s=WALL,
         ),
     )
+    if any(args.harness_settings[r] for r in ("planner", "supervisor", "teacher")):
+        subprocess.run(
+            [
+                sys.executable,
+                str(HERE / "run_libero.py"),
+                "--check-upper",
+                str(args.boyue_config),
+                str(args.initial_index),
+            ],
+            check=True,
+            timeout=180,
+        )
     with ExitStack() as stack:
-        clients = start_replicas(args.output, args.executor_client, stack, args.replicas)
+        if args.remote_client:
+            clients = args.remote_client
+            deadline = time.monotonic() + 3600
+            for client in clients:
+                while not client.is_file():
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError(f"remote TP2 did not publish {client}")
+                    time.sleep(3)
+                ready(client)
+        else:
+            clients = start_replicas(args.output, args.executor_client, stack, args.replicas)
         print(f"LIBERO40_READY {args.replicas} TP2 replicas, {2 * lanes} episode slots", flush=True)
         results = []
         lock = threading.Lock()
