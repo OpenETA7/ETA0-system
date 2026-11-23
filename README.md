@@ -1,5 +1,7 @@
 # ETA0 System
 
+本分支另收录 [R27 Slow/Fast 异步具身 Harness](r27/README.md)：独立 Python 包、冻结源码、回归测试、运行配置与 LIBERO 结果。下文为仓库原有 27B 执行系统；两套实现分别安装和运行。
+
 给 fullmix step2500 的 27B 具身模型增加长程任务规划、视觉监督和单样例上下文学习。一次用户请求对应一次环境 reset。27B 持有完整目标，自主依据外部相机、腕部相机及实测状态选择动作。默认仅给长任务一份简短计划，在连续停滞时请求视觉监督。整个过程共用 benchmark 的动作校验、控制器和原生成功条件。
 
 [当前控制策略、消融参数与轨迹回放](docs/executor-led.md) · [第一版系统设计与评测方案](docs/system-design.md) · [基座使用说明](README.base.md)

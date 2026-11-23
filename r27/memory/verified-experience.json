@@ -1,0 +1,272 @@
+{
+  "version": 2,
+  "entries": [
+    {
+      "match_text": "alphabet soup",
+      "image": "alphabet-soup.png",
+      "caption": "Appearance reference from a prior officially successful alphabet soup task; match identity only, current position can differ; not current scene.",
+      "provenance": {
+        "official_success": true,
+        "official_verification": {
+          "source_result_file": "archive/autonomous-embodied-harness-direct/runs/pilot-direct-v3/libero_libero_object_task0-v0-state0-single_strong/result.json",
+          "recorded_status": "success",
+          "recorded_success": true,
+          "accepted_grasp_request": {
+            "request_id": "e7dd377f8d704c03a0a47a3aef4836d8",
+            "capability": "grasp_point",
+            "point_id": "point-1",
+            "receipt_status": "completed",
+            "receipt_action_id": "711b7aaa179f4c9392501fff30cd8c46"
+          }
+        },
+        "source_episode": "archive/autonomous-embodied-harness-direct/runs/pilot-direct-v3/libero_libero_object_task0-v0-state0-single_strong",
+        "source_sha256": "9e59ee678734e20ac300ce4fbc96be659fba14907748657a95fc417fdbe4cde7",
+        "source_image": "archive/autonomous-embodied-harness-direct/runs/pilot-direct-v3/libero_libero_object_task0-v0-state0-single_strong/frames/obs-00002-1.png",
+        "source_image_sha256": "870f03d2e322939ca0513e0aef194c36fcf52e72adccd3d877b66ce6c8e2dcc5",
+        "initial_agentview_image": "archive/autonomous-embodied-harness-direct/runs/pilot-direct-v3/libero_libero_object_task0-v0-state0-single_strong/frames/obs-00001-1.png",
+        "initial_agentview_image_sha256": "220485763bd370b42a5805d2fc15aa4fbfb82c3361deb01f2fae678b848f23ef",
+        "mark_observation_image_sha256": "870f03d2e322939ca0513e0aef194c36fcf52e72adccd3d877b66ce6c8e2dcc5",
+        "initial_state": 0,
+        "initial_state_sha256": "6cd4976519943bdc84677396a6e2942e9816ae87e56fc72943914e147f9b6e1e",
+        "mission": "pick up the alphabet soup and place it in the basket",
+        "crop_method": {
+          "method": "crop centered on the mark_point measurement matched to the first completed grasp_point request",
+          "source_image_role": "image attached to the earlier model decision that issued mark_point from the preceding agentview observe result",
+          "preceding_observe_crop_xyxy_pixels": [
+            90,
+            200,
+            180,
+            280
+          ],
+          "source_crop_pixel_identical_to_initial_agentview": true,
+          "source_packet_id": "direct-1",
+          "camera_frame_id": "agentview",
+          "point_id": "point-1",
+          "center_pixel_xy": [
+            127,
+            228
+          ],
+          "padding_pixels": {
+            "left": 22,
+            "right": 23,
+            "top": 23,
+            "bottom": 24
+          },
+          "crop_box_xyxy_pixels": [
+            105,
+            205,
+            150,
+            252
+          ],
+          "crop_box_end_convention": "x2/y2 exclusive",
+          "source_image_size_px": [
+            512,
+            512
+          ],
+          "overlay_added": false,
+          "measurement": {
+            "xyz_m": [
+              -0.12978446701874402,
+              -0.24547182979492538,
+              0.07336373473932678
+            ],
+            "depth_m": 1.1760485172271729,
+            "depth_edge": false
+          }
+        },
+        "crop_sha256": "fd1c57a5fb04b7c63610535c01e85b145b65f7dddb89846c730dfab5c2480311"
+      }
+    },
+    {
+      "memory_class": "verified_single_acquisition_v1",
+      "match_text": "bbq sauce",
+      "image": "bbq-sauce.png",
+      "image_sha256": "0a6648141a26a9aeaa6169490d135265e2b78ff48827bf0b7266b1fdb4050bc7",
+      "caption": "Prior successful mission: pick up the bbq sauce and place it in the basket. This is its selected pregrasp appearance crop with debug margins removed, followed by exactly one accepted grasp and official task success. Compare visible identity only; this image is not the current scene and gives no current coordinates, pose, contact, or retention.",
+      "provenance": {
+        "official_success": true,
+        "source_episode": "archive/round22-dev04/attempts/control/libero_object/task3-s37/dual_async/attempt-01",
+        "source_result_sha256": "9c2d86e952ea389145b5226fb92653fc70a5ff92908ff27ea0737c2b24412b1f",
+        "source_events_sha256": "f85da0b5e3ecd48b8772802ff26890e6aed3b3afeed5c2da71e01dc52075a3a7",
+        "source_fast_trace_sha256": "65cd46c90a7e79960a25d63bc3c85d1279014f15dc28549bc2d320b8f414470a",
+        "source_image": "archive/round22-dev04/attempts/control/libero_object/task3-s37/dual_async/attempt-01/frames/obs-00002-2.png",
+        "source_image_sha256": "6f925e6dd088f4abd59c7ea35ad9bd604ed7825316bdf0445a703ea9c2ff7877",
+        "reference_image_sha256": "0a6648141a26a9aeaa6169490d135265e2b78ff48827bf0b7266b1fdb4050bc7",
+        "reference_transform": {
+          "method": "strip_debug_margins_v1",
+          "source_size": [
+            512,
+            512
+          ],
+          "crop_xyxy": [
+            48,
+            16,
+            512,
+            474
+          ]
+        },
+        "source_sha256": "2cc63a6089dd3e2d0d08c87692670800cd03d78b30e569aa99d801a11cc5c082",
+        "mission": "pick up the bbq sauce and place it in the basket",
+        "initial_state": 37,
+        "accepted_grasp_count": 1,
+        "accepted_grasp_seq": 16,
+        "accepted_grasp_request_id": "d7f533ad3fc54d39bbba1f3764d71a5f",
+        "accepted_grasp_point_id": "point-1",
+        "receipt_seq": 47,
+        "receipt_status": "completed",
+        "receipt_macro_status": "lift_completed_verify_retention_visually",
+        "official_verification_seq": 90,
+        "official_verification": {
+          "status": "verified",
+          "evidence": [
+            {
+              "source": "official_libero_check_success",
+              "sim_time": 14.650000000001562
+            }
+          ],
+          "observation_id": "f9bd54f73d86469bae33cf38022a3dee",
+          "source": "official_libero_check_success"
+        },
+        "pregrasp_action_seq": 0,
+        "visual_candidate": "p1o-c3",
+        "source_packet_id": "direct-1",
+        "crop_xyxy": [
+          177,
+          249,
+          222,
+          327
+        ],
+        "crop_method": "recorded selection zoom cropped to [48,16,512,474] removing coordinate ticks and historical candidate/banner; no pixels synthesized; candidate bbox fully retained",
+        "limits": "Past outcome association, not current ground truth; no hidden object state or simulator asset metadata used."
+      }
+    },
+    {
+      "memory_class": "verified_single_acquisition_v1",
+      "match_text": "ketchup",
+      "image": "ketchup.png",
+      "image_sha256": "80600b11ddd53bc33ed0b2fea864225da995a87f93a7d69e139c85fe6255ba81",
+      "caption": "Prior successful mission: pick up the ketchup and place it in the basket. This is its selected pregrasp appearance crop with debug margins removed, followed by exactly one accepted grasp and official task success. Compare visible identity only; this image is not the current scene and gives no current coordinates, pose, contact, or retention.",
+      "provenance": {
+        "official_success": true,
+        "source_episode": "archive/round22-dev04/attempts/target_judge/libero_object/task4-s37/dual_async/attempt-01",
+        "source_result_sha256": "df5086ca6eebac59d4dd637947eab343a53a2644d7e91c0685b1e16e82bf25c9",
+        "source_events_sha256": "968d9185eef84e3d61b87d77cbee7802b26b487ca123077c2c16315001b6ff5d",
+        "source_fast_trace_sha256": "10b9623da94b6c3cda856152a828356a447388afd456580824a67048d1c91514",
+        "source_image": "archive/round22-dev04/attempts/target_judge/libero_object/task4-s37/dual_async/attempt-01/frames/obs-00005-2.png",
+        "source_image_sha256": "ef6d773cef9edb7a8843bf14219e828aa9b9cfd4386f3f11ab954b1a53b09ff5",
+        "reference_image_sha256": "80600b11ddd53bc33ed0b2fea864225da995a87f93a7d69e139c85fe6255ba81",
+        "reference_transform": {
+          "method": "strip_debug_margins_v1",
+          "source_size": [
+            512,
+            512
+          ],
+          "crop_xyxy": [
+            48,
+            16,
+            512,
+            474
+          ]
+        },
+        "source_sha256": "2cc63a6089dd3e2d0d08c87692670800cd03d78b30e569aa99d801a11cc5c082",
+        "mission": "pick up the ketchup and place it in the basket",
+        "initial_state": 37,
+        "accepted_grasp_count": 1,
+        "accepted_grasp_seq": 34,
+        "accepted_grasp_request_id": "a8bf99db7f344eeaa82e043716d62988",
+        "accepted_grasp_point_id": "point-2",
+        "receipt_seq": 70,
+        "receipt_status": "completed",
+        "receipt_macro_status": "lift_completed_verify_retention_visually",
+        "official_verification_seq": 114,
+        "official_verification": {
+          "status": "verified",
+          "evidence": [
+            {
+              "source": "official_libero_check_success",
+              "sim_time": 15.700000000001912
+            }
+          ],
+          "observation_id": "fbc9ce5ab8f048339423f38e86063c8c",
+          "source": "official_libero_check_success"
+        },
+        "pregrasp_action_seq": 0,
+        "visual_candidate": "p1o-c2",
+        "source_packet_id": "direct-1",
+        "crop_xyxy": [
+          105,
+          184,
+          157,
+          275
+        ],
+        "crop_method": "recorded selection zoom cropped to [48,16,512,474] removing coordinate ticks and historical candidate/banner; no pixels synthesized; candidate bbox fully retained",
+        "limits": "Past outcome association, not current ground truth; no hidden object state or simulator asset metadata used."
+      }
+    },
+    {
+      "memory_class": "verified_single_acquisition_v1",
+      "match_text": "tomato sauce",
+      "image": "tomato-sauce.png",
+      "image_sha256": "d5325d68a61eb01203f74923065e1690374113a772d3f174e7c17fbc5a1588da",
+      "caption": "Prior successful mission: pick up the tomato sauce and place it in the basket. This is its selected pregrasp appearance crop with debug margins removed, followed by exactly one accepted grasp and official task success. Compare visible identity only; this image is not the current scene and gives no current coordinates, pose, contact, or retention.",
+      "provenance": {
+        "official_success": true,
+        "source_episode": "archive/round22-dev08/attempts/control/libero_object/task5-s38/dual_async/attempt-01",
+        "source_result_sha256": "a127880320319052e261b33f7d2cb38869990703dd059e353094766f17f6ced9",
+        "source_events_sha256": "0bc931f036059ff7e15f9ad6ff6bfb4d178d8e3f9356eb5526d819a4a6c5740f",
+        "source_fast_trace_sha256": "edfb52b4fd24198739630853bc2c76be02f7141b47e9f7f5d113beefe7e03804",
+        "source_image": "archive/round22-dev08/attempts/control/libero_object/task5-s38/dual_async/attempt-01/frames/obs-00003-2.png",
+        "source_image_sha256": "b8328e90a9e27315c1914ca5ce4348247b6ddc8b04475a85887181082692e8b5",
+        "reference_image_sha256": "d5325d68a61eb01203f74923065e1690374113a772d3f174e7c17fbc5a1588da",
+        "reference_transform": {
+          "method": "strip_debug_margins_v1",
+          "source_size": [
+            512,
+            512
+          ],
+          "crop_xyxy": [
+            48,
+            16,
+            512,
+            474
+          ]
+        },
+        "source_sha256": "79185c158b5eb5a35e8cd44d65e556ed60afdbe9f1082e419d81356ea30e6637",
+        "mission": "pick up the tomato sauce and place it in the basket",
+        "initial_state": 38,
+        "accepted_grasp_count": 1,
+        "accepted_grasp_seq": 23,
+        "accepted_grasp_request_id": "de96a0a6092646a9bf3a8a481a4fbdb0",
+        "accepted_grasp_point_id": "point-2",
+        "receipt_seq": 54,
+        "receipt_status": "completed",
+        "receipt_macro_status": "lift_completed_verify_retention_visually",
+        "official_verification_seq": 101,
+        "official_verification": {
+          "status": "verified",
+          "evidence": [
+            {
+              "source": "official_libero_check_success",
+              "sim_time": 15.250000000001762
+            }
+          ],
+          "observation_id": "ff75833d95a54199995166e1b376ab1b",
+          "source": "official_libero_check_success"
+        },
+        "pregrasp_action_seq": 0,
+        "visual_candidate": "p1o-c3",
+        "source_packet_id": "direct-1",
+        "crop_xyxy": [
+          166,
+          259,
+          225,
+          334
+        ],
+        "crop_method": "recorded selection zoom cropped to [48,16,512,474] removing coordinate ticks and historical candidate/banner; no pixels synthesized; candidate bbox fully retained",
+        "limits": "Past outcome association, not current ground truth; no hidden object state or simulator asset metadata used."
+      }
+    }
+  ],
+  "experience_protocol": "single_acquisition_official_success_v1",
+  "builder_sha256": "ab2798d07973a4b9fe983a1d45af6a2a85957c5ddec6b02c9f6b8a2ecb1bcbd9"
+}

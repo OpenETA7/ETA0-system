@@ -1,0 +1,531 @@
+{
+  "task_order_index": 0,
+  "states": [
+    26,
+    31,
+    35,
+    36
+  ],
+  "tasks": [
+    {
+      "suite": "libero_spatial",
+      "task_index": 0,
+      "env_id": "openeta/libero_libero_spatial_task0-v0",
+      "mission": "pick up the black bowl between the plate and the ramekin and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "abcb7b355a728397586ea87e3ff7a8922f27d1ce87137cbb7fad7519c1c8da0b",
+        "31": "dca9d9879195a74cffd26499d9ff1d6f566adaf1dbc1b9abe412d55d8e9c1782",
+        "35": "da423a72804324ba67dd5ae2aa9cb7e5142796aba92c25c0276ecac12d40f41d",
+        "36": "fe0d28c5f781190e1a52e36fa525ac2eeac39b7ccb9b5baf618c9215bc3e68ed"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 1,
+      "env_id": "openeta/libero_libero_spatial_task1-v0",
+      "mission": "pick up the black bowl next to the ramekin and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "f71d05cda4b40bf08846f79046760d7f190ecb9d4669f439190fc099b001bbd2",
+        "31": "8a60a693678e7959209f6070471a12fe613bb54f61355402f19eecd32db53e29",
+        "35": "70c13ed9b72e4a50a457aa546114435b5a37cf32ed8343de02d45226f5553387",
+        "36": "2d46859e597481982403d4c61db844c29c05f16c25cb9d79197100b37fb90831"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 2,
+      "env_id": "openeta/libero_libero_spatial_task2-v0",
+      "mission": "pick up the black bowl from table center and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "be6662154a0d0e253ab8a4b6efdfe69cb35ce9c940b925a4de07ddf2c7c9cbf7",
+        "31": "c976c7363518d54a34633001b7207956139afa1061ff6a217ab65eb24fecfb0c",
+        "35": "2ada1866e53646f8f275b5a1559704d46a2044c63cbd6632d2649341a94ec593",
+        "36": "2f82f1f21c3698a59e4e57101c16da738dc169941e3b9026f0795cb1f1de1a90"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 3,
+      "env_id": "openeta/libero_libero_spatial_task3-v0",
+      "mission": "pick up the black bowl on the cookie box and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "3215e3983a35e04d336484f1af05ec753b0d3f58bb1c7c4a97530ed8f9773886",
+        "31": "fa32f8fd267af8197d89c23adab4d9512c5c40f170e3451c47cf1d5c51a52816",
+        "35": "f55c5e51f01ca6bf7559c299c7e3fb27d3cf29cf399cae771e087cfcaec9ba46",
+        "36": "dde1535e84d97fd635b176fe8062397324afe0a7990008eadf466459bce4f4a4"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 4,
+      "env_id": "openeta/libero_libero_spatial_task4-v0",
+      "mission": "pick up the black bowl in the top drawer of the wooden cabinet and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "9fab525b2ee6351067ed27aaed745583c3c6b0cfacd1a5f8bb6dd21194a2a722",
+        "31": "caf7ad508329331a10ccfc61fdcee5d9be438c13e250c25763736a544d7c109a",
+        "35": "a7238facfdff29124305c5be4b2979e0dd56fb53aa7d2a703904a5b2fee9601d",
+        "36": "f24cc47b571058e41d5962625453cb0033aa041c9597a7355d27771f4bbb85a6"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 5,
+      "env_id": "openeta/libero_libero_spatial_task5-v0",
+      "mission": "pick up the black bowl on the ramekin and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "641c9a051b6e04f34c64fbdfa8f3a9f26f1a88d2f0bd175c75f9e0065ae40258",
+        "31": "b35f68c7d99cca813baf26e7221b52e2797fec4bcbcedfcf6ac8951171ccf6f2",
+        "35": "f70104a9c4cc3671c4d82c9d580aaae2523f99eccd4d2c5a16862d554e5c2dc9",
+        "36": "6751c83b8ee7c3018d678f8e9f0aa264fc34139441b7a5510d6704e48552e9f5"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 6,
+      "env_id": "openeta/libero_libero_spatial_task6-v0",
+      "mission": "pick up the black bowl next to the cookie box and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "5dcdcf0d1d2ac2bfafb4f0f83366b5d3d358136a224843d8ec54d3d8d4c84945",
+        "31": "6ad396a15dda3ae18c29134e0f4dea11f92a2176292d9826050a957d0028dd74",
+        "35": "0d4bb4a3c1075a5d853390878fbb07885c89f2a06277de6bdbf80e83010400d6",
+        "36": "c9ac368b6f0df99a323ba4fa26c7791a4c5998413f01171c7725f436a6292897"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 7,
+      "env_id": "openeta/libero_libero_spatial_task7-v0",
+      "mission": "pick up the black bowl on the stove and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "82f71abf47a98c811d74a2f6ff617160ba85662961fdec814deb3ef3669a8978",
+        "31": "05312e1d2a8dd073d6660d60daee7be86b40a4bb5c3af0db76f95818420ab827",
+        "35": "34aa218b2adf0d8a60e6ebca53ffb597b820c35a576587de2c428123d42e82a3",
+        "36": "fa3ae3e218e050b022bf87a1fecaa1d5ac408ac8a8a4180a214e2fe827950270"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 8,
+      "env_id": "openeta/libero_libero_spatial_task8-v0",
+      "mission": "pick up the black bowl next to the plate and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "141a55577c8e4d8997fafc634b9ed086c60729a2de6ec8099b1788c58f391e9b",
+        "31": "6c1626b5e168565c0f5d999e66e5fae66c8a2ded61c17031e6b49fa63f47c1c9",
+        "35": "ce27ff3ffcffaa1d8c82a5e16bb8a331efc6ad494cdb2c55f716988a3786e2e6",
+        "36": "e791e850b22a3795f8ec7df396c23db29e6bc087d320adfc114266dfb2eddd98"
+      }
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 9,
+      "env_id": "openeta/libero_libero_spatial_task9-v0",
+      "mission": "pick up the black bowl on the wooden cabinet and place it on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "0fb1686974bd5aed359c6cd0ac65066c384881431f9d156b1bb63fd80d4f8551",
+        "31": "64496d1b371573196c4ff47fe9511594f26be263c9bb9a1de435f3fcd67419c2",
+        "35": "6ca029ce574ce3ebfb81bf3d6836ffc6b536a3763b0ee2eea9102efb14ae7d71",
+        "36": "0a443b426f850862531c356933ea63d95fad70adf8318932beec5f25f35f47f9"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 0,
+      "env_id": "openeta/libero_libero_object_task0-v0",
+      "mission": "pick up the alphabet soup and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "282e06541522f4ac1e000838f99aaf99bc52d401efd5846cbc57256616146230",
+        "31": "8755df9e475fa7fbe2091a2428875e2ba15cc54b3991f0a34b0ba7776c60b5a1",
+        "35": "db3f8c26b9602358ad5a8f21babc54fb1f15d98043991d4cc0a4bf6b802ec109",
+        "36": "1ae074b106bec85a17cc59c80d02030b11e66068febe1c60eeb3ae23ae7c5ac5"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 1,
+      "env_id": "openeta/libero_libero_object_task1-v0",
+      "mission": "pick up the cream cheese and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "f2271d8d57cfb1259db4f6d01786835c8813004c52a00c4364bf1dbe166947bb",
+        "31": "7cfdad1f6e3bc75b6482df17570654b0f62c3617a0ae90078cde11d16d19013e",
+        "35": "64a46bf7044d30156b5ea949388a28d8dba5b690add818320a710de573b9434f",
+        "36": "ac29874326753fb968159f7c711dfcb667d8d83b962b7cba683167483426d12f"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 2,
+      "env_id": "openeta/libero_libero_object_task2-v0",
+      "mission": "pick up the salad dressing and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "8f158dd75fe2ba5416d7c01fc09ec5e2f4f0f491d8a2ff7068b33d4a1737c6b2",
+        "31": "aecab0688af901a43b136e2a2a6a07061cca36594e0254303028909c366d5885",
+        "35": "9d2c2a2f13c382a64685a0ca248e29d8b7d43f90b182db500b376b5609cc55f0",
+        "36": "4cb6cfa6ad9e55505e6e1564aa87c67bddfb8a8be5c0e0be4f12289361f562af"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 3,
+      "env_id": "openeta/libero_libero_object_task3-v0",
+      "mission": "pick up the bbq sauce and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "2a3250d83dad8f1a263c28e920a4570a5c958951d447c31e80514e20413a4c23",
+        "31": "30b77ee4a791f67d86975c649d04b978b472139f4b0e36fd212d2d19413e819e",
+        "35": "4104cfedc4ff99e2378a1febd32b5acfb475c1c3f60a00e0d5d7d4cdb51d5880",
+        "36": "afe5ad90ea03b4669d5883b9dfe4831f29744fdcb0e7fb0809fb9dfef2c3993c"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 4,
+      "env_id": "openeta/libero_libero_object_task4-v0",
+      "mission": "pick up the ketchup and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "0a2d597d695b01f974ac9b4710acf43c5f49decca7b122ab3acbab62435312ab",
+        "31": "dc5dfc5398fca6a1126b3a90e0ddc500b37fd31372edab6c06063bdffdbd1dea",
+        "35": "3d7aeff5527a0b4bb2595563737d5ca9eb24d058387c816161ff51903fb9f619",
+        "36": "1c37bb167fcc102aad0a80d01f7f53528ed635f5b1000bcd14787e5efae5e792"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 5,
+      "env_id": "openeta/libero_libero_object_task5-v0",
+      "mission": "pick up the tomato sauce and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "be14a5b0caaf4b3db2626836137035e437fea3f2371126189dc560a808cddb9f",
+        "31": "0976e1c137d864953280f18994bd98b7a6f6d46047e10fdf22a8412efc32a528",
+        "35": "609be556dbc88d805674bf69efbdfa12fd4ce6c44b3115f87e239c57c9d14fc9",
+        "36": "be6be38ca705b0180e40bd14d77a0746198e8e5bf4ec53755a3f6da3d04a009a"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 6,
+      "env_id": "openeta/libero_libero_object_task6-v0",
+      "mission": "pick up the butter and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "986bd4c46883cf81b8c9fdccc5a095f2e965110f06ec09faa30faa16a5fb788f",
+        "31": "1055b98adb40a3ba1c9cdd053c0655f3740486713dca34baa5564196df2177ba",
+        "35": "59ce5da8b6e76c8e62eb17fc583b6e1311e3cfa8f08735075f10d4bc9b11764a",
+        "36": "a75e93b4e43c2a1981f1d22533c2d88934d96a68c1cb7ca03a823944a4d1e6cb"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 7,
+      "env_id": "openeta/libero_libero_object_task7-v0",
+      "mission": "pick up the milk and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "52d91fea27c01a17596062da925faa522786e5e6c7354c651e5dafec9e980563",
+        "31": "5b1086a14fc7bb8c23c8ca48fc95138f7699d57839e5913f0cab8166e1bd4afb",
+        "35": "d95898f86c53ba6ef2c3a848041e981917bdd0f0a522a1d376b439b670b16358",
+        "36": "6fdb07a6c3b90f4ff5c7177d7afbd2c303ed45e821f1552fa4561c77f5145c78"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 8,
+      "env_id": "openeta/libero_libero_object_task8-v0",
+      "mission": "pick up the chocolate pudding and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "1de6b8f27c15b2b0b3d3f42983944d9cf48d052ebe88124197c7ef891f7f0747",
+        "31": "633c873ac8bb7ec77221999f4ece208543d9e076b887da813b45d1f307919b62",
+        "35": "0d2ab2b560aeafcdea494c5734a24146071e53b1e913ac4af167aa6563e87f4b",
+        "36": "81813a42909c869d1a8642d552b62116cb7dc1362699128212c768ce1cb40481"
+      }
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 9,
+      "env_id": "openeta/libero_libero_object_task9-v0",
+      "mission": "pick up the orange juice and place it in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "0f01321db61acc49682f94fe3d71783fa93e64fb1ce1b75947a70fa3114aa46f",
+        "31": "ce72ac60f303816594dc419ebf9c52950e0add8a5a909eda98e72bdc91072752",
+        "35": "5958884b4821782b6d608b79af257703efaadc461566855785073a297f76d376",
+        "36": "8ff2dcae77d1bf221682cc4518822e4b05f92bb5e710e1527b61e400bdfb2f95"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 0,
+      "env_id": "openeta/libero_libero_goal_task0-v0",
+      "mission": "open the middle drawer of the cabinet",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "b8f2f742a22938bf66f244c34b64f07168d33ba9b3c91322e3dbfa310fef013d",
+        "31": "64c5b3252c946b3b0663e42081106df0114f6666a493ae8cbd409979c34902c0",
+        "35": "6b092d870792ad893e7eb13a81504c2661a4bfe23fc7b843bcf36895a22a8004",
+        "36": "2b8bad126c14ef31adb5972e2ee44a1d87fe0023e88de99439fd606b3c10d9f7"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 1,
+      "env_id": "openeta/libero_libero_goal_task1-v0",
+      "mission": "put the bowl on the stove",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "6c540dd59cc6ac86d340dca323b1bf219f06969b0feaafe5e70081f00a239cdd",
+        "31": "52cb024a1acd920b4db38b9f8814710669c00248f5dc4336f9fd3142c910fc3f",
+        "35": "8f92e42ecfcd936a1c8b6af5b4861e2ead18400baff41900a9718220271aee3c",
+        "36": "3b536b02a2ad25a3661ff40ad5fea9a64012c1338bc3740608ecd42a25d17143"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 2,
+      "env_id": "openeta/libero_libero_goal_task2-v0",
+      "mission": "put the wine bottle on top of the cabinet",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "c5174f58003438857e181aa070f01df745f7a1333a1889d855ffde4ba39884d1",
+        "31": "fd1ed5eb3e86eec21636d47892535653eda3c653293d7544b5b4bd3dc2d51276",
+        "35": "314667da530fc3a8ef54f5c45893d6d02c6a5e4eea786d1c94d79c7b6f2c490d",
+        "36": "a1ff75dff3149eb2e28cf46730a739b02721ea93f09ba698bc82b81bd37d467e"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 3,
+      "env_id": "openeta/libero_libero_goal_task3-v0",
+      "mission": "open the top drawer and put the bowl inside",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "8e55f612a8ba858b76aaf4a1e7b980781ce8c36748a86f03f7ed1c567867038c",
+        "31": "ecb6e1c1f165cce65caba1e30dec50bcfdc937c4ab4fa1642d2a5763fc9d93be",
+        "35": "3712ea7e930a8c9a3082723af52eb15d4f8e1fa35c285409279b80a265564b2b",
+        "36": "bfd522c2ef71978217cc695a4931ee5d3dba8c30b928f0a5e7b1a2bdd7ca9c6b"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 4,
+      "env_id": "openeta/libero_libero_goal_task4-v0",
+      "mission": "put the bowl on top of the cabinet",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "c7dcf01ab47b9d57dd4383dd944f9070cad3279ae183639708c29b188f565582",
+        "31": "f11c389d5b0c03ce6f74606d373a3f44a310d7ae831e59fae738197c09430a3c",
+        "35": "9f9de9fdf86577e6b95278bbbd2c588739688a3bbf897e7e37621c49b8928d7a",
+        "36": "87df959662b55ac77faf82e9702076f872ee915a2d0310e4d2cdff69cd45b853"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 5,
+      "env_id": "openeta/libero_libero_goal_task5-v0",
+      "mission": "push the plate to the front of the stove",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "67c40513180456f91bb739ca428c535913023b315bc23e57f8034f8e6c59ac50",
+        "31": "adff9355e78c17de1382913209d2b0d30bb050ac8fbe25ba337fc5ca801583e8",
+        "35": "58ed02e8cc0ec8b343e2c1ef09535df922d86f7dda7fa16f996fdff9c9a34fbe",
+        "36": "feafaaaa6a2f9d647380938d9f9477dd48b7ca3ca8ed5fbb99f719f157217d2a"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 6,
+      "env_id": "openeta/libero_libero_goal_task6-v0",
+      "mission": "put the cream cheese in the bowl",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "e6ab561fef49b8b1e36b12a75f6e77de679b2e853b7afcf8ac674ebe688ec554",
+        "31": "dbc006418c6aed97997ed191a90f3d85f0127585818fc1995955d8c408b5000e",
+        "35": "c328135256b70b7cadedc68d7dfd33909397be96ec3b355cfe28211bd63c4b3b",
+        "36": "8d6607da58e3ed97be03262e2653dfeb790ab5ed70b8750cd63c044d9b8b2a34"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 7,
+      "env_id": "openeta/libero_libero_goal_task7-v0",
+      "mission": "turn on the stove",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "3d85192e527a62eaa0a685538d499ce0d396855d13634c8b3c3124cb176dfe8b",
+        "31": "0cdb2eada334939e2380d2ddd13408e50ec934c6621a28f72dd82e45e15d5e3d",
+        "35": "a5619e0d3122971d42e2cd583060eb430fb1ddf4cfccd8fa9af0074315219848",
+        "36": "2e9280569b3668f01544774aa441e8dd4871b1164e6af6a0fdc19dcd14787b63"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 8,
+      "env_id": "openeta/libero_libero_goal_task8-v0",
+      "mission": "put the bowl on the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "b8833b3a43950c64ae5a0478716b2a88552d2a9c17d0f832ca4486516298a855",
+        "31": "f2a29258d223fa02d5c49412596018b884b9b8200ee3faaddead25b3d79e3442",
+        "35": "57010222c8255583fbff3ee6dc803ec42c8b018f5e6a1b0aef2b72c86b0e07d7",
+        "36": "6ac443964f6826963818580e47db11d7b2fa1c9306699201bf60a89067cc483b"
+      }
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 9,
+      "env_id": "openeta/libero_libero_goal_task9-v0",
+      "mission": "put the wine bottle on the rack",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "2a5a4a61fd64aade764c0479a9a5e67aa3d140b4030281726ae05c83f2e8762a",
+        "31": "1b2eaf0258175d6e52d342749e36b960470c57f825124d485b6a2ac4d2b56a54",
+        "35": "8fde0a59a88cdfb2947a4ff01ce3966a755ca7ab69a79b6ab9783cccca739dec",
+        "36": "40824200acf3aec1b8088b3f401b65693a10352146b206d041f88eb5eb981c45"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 0,
+      "env_id": "openeta/libero_libero_10_task0-v0",
+      "mission": "put both the alphabet soup and the tomato sauce in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "f3eb487360e32e1b74ba86f2c7dd711890eed94ac141ec434d8bf6ac61208d54",
+        "31": "ddf7ab5d007fad164a51292976ff50ab6f95448d50446e1a3db30618fb1a48f0",
+        "35": "d10f0f897baa266979d4488fb8a7f478f5989b11aaab1d5bc0c2b8f11012e76e",
+        "36": "2353bc589e580d14d44d8bc8ae5b6c3d654c208138a62c01287c3502ec5f2514"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 1,
+      "env_id": "openeta/libero_libero_10_task1-v0",
+      "mission": "put both the cream cheese box and the butter in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "3eebd94a23ba0a8cc59fa852fea4b940816911670d50b7bfd357c3ba655a2f78",
+        "31": "56d362be598aba5a53ee21dd8503973944e78122057eefe1fcedfa3e9b3c70d4",
+        "35": "542de85e4d3d73932fd4025fd47d03f0eb450df3e48b53d9a4b5d578d1e5a91a",
+        "36": "6ff65b3f944f2fdfc2513a8741e0c1620259624097a306c18c6f58e56ca207c5"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 2,
+      "env_id": "openeta/libero_libero_10_task2-v0",
+      "mission": "turn on the stove and put the moka pot on it",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "52d555417d6da2f0ce5e1d80eca35f22e511c9e9f8b49ccd077aaa6ec208761e",
+        "31": "1f408b30145b0da5556935a01f54ce098c8af96b8c32f710518c6a67464ce1ab",
+        "35": "4b56da2ee0b747fb7da45ed570709efcc8154b51ffe46223873d4cf26ca269e0",
+        "36": "15b706155c16d7d91603f09435f79d8b2cda4dc56bcc0708bc27b3d55a3ad6a7"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 3,
+      "env_id": "openeta/libero_libero_10_task3-v0",
+      "mission": "put the black bowl in the bottom drawer of the cabinet and close it",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "6b4fb60fcd8ce248937b527d067cfcedff974e9730db58786bce5d3aae840af4",
+        "31": "84429ea13f1c7a08c58f7deb2569dd2f59b90957564e3c241e10dd3041512ec6",
+        "35": "f562c40a3925683e6e9c7c7f049f572e7821d04c02651538c76a253fa3567f8f",
+        "36": "b5dee2bd0d5c3ec37f5fb5226698ccd9bd38ea9cab5d3e2f0a9f723f5df95657"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 4,
+      "env_id": "openeta/libero_libero_10_task4-v0",
+      "mission": "put the white mug on the left plate and put the yellow and white mug on the right plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "33e98cff1bf87eb58c019516257cc5f3f730356734ec6737af9dcb04dc618182",
+        "31": "1674808307b59c3ee8f56f973a09ad05f9319e1565ec999c5bc4251f4c29b179",
+        "35": "9d8f4dd19a61e022827b357b0119593fe1d1db35f07456fe39348e2ac5f1257b",
+        "36": "eda2439368a3423ad51389d2c41ed4b5889a1bd42f1c52d79e9b277a935b9aa7"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 5,
+      "env_id": "openeta/libero_libero_10_task5-v0",
+      "mission": "pick up the book and place it in the back compartment of the caddy",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "d5719527459ad4a215f044b8dd0281724ad2fcc43610818a1edf0fcb0a64b27a",
+        "31": "b6384d77b9272e4ddf41b1436de820472183ecf4db6e568d5aed39cc8a22efe7",
+        "35": "3f0b3ee929552c37ab56967a88cc3e44e5bd1d14ba08c5b2c4193a2faa627522",
+        "36": "dc0c9187b0edc24de732e4ed4ca8fe21af21ea522e219695cd26b097cfedb3fd"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 6,
+      "env_id": "openeta/libero_libero_10_task6-v0",
+      "mission": "put the white mug on the plate and put the chocolate pudding to the right of the plate",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "7ca19b06270be0f61b298cf714a3e9381e6cce7512fcf5bfb951b7db7a69076a",
+        "31": "6a503b45fb446c924f9a00949aeb263053191543f2654c28fbf7327448a32dbf",
+        "35": "45cb2e7425f7a1dfd161e429a474e2d9027f4210827a53691251fa32f5d7bd66",
+        "36": "b7973f77a0a75b0b6301d3b172f0c5c397e84b056f4dc0eb5c2be6dd823bf96f"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 7,
+      "env_id": "openeta/libero_libero_10_task7-v0",
+      "mission": "put both the alphabet soup and the cream cheese box in the basket",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "f758b0e7c7f4c481f7b2c39bee5f340798ed2e741c8998788cb84c2c4a86a205",
+        "31": "89a50987fc0c69a3021b42287a3408260a44c52331ad9aaf25e058d4522b62d6",
+        "35": "48aec9daa34ff0b7560a9c3aaa9ea99d065b783fa98ed618290daae726dba716",
+        "36": "73188acf4c99bc6de74ba46f708d77921eb24b4bf80c864784e35bdd641ca428"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 8,
+      "env_id": "openeta/libero_libero_10_task8-v0",
+      "mission": "put both moka pots on the stove",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "287f3a15be289f6e3f6176dbf687be7439dfdff48fd2f6efea4512ed551ff783",
+        "31": "3540c8b960689d14216465e1ac549677b76c345ebaefff3af1aa4c32a446acd7",
+        "35": "be9df52efe7ac2dce8adf2ea8e1dbc897a21ae49653d68e05eecfb5cc302d7b5",
+        "36": "ef7e00c400cc85f6e6c5ff26eaea81ba4c190e475258f2812a53adef6103b198"
+      }
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 9,
+      "env_id": "openeta/libero_libero_10_task9-v0",
+      "mission": "put the yellow and white mug in the microwave and close it",
+      "official_state_count": 50,
+      "state_hashes": {
+        "26": "bcf0429b523f15f268f27d898a0f7ec2b117b8257fd3f11b7eceb6f548c9db7c",
+        "31": "37d518b5cd4219622dd8fa9e81aff69c08e3e668c651af181c7fa5f3f197eb77",
+        "35": "5d05dca0a8ebb400b779b4152289f5a5f9c6acdd42d4e87dd278948781d884b6",
+        "36": "c6b5d8ffd15cae9c71508226e0ae8eb0bdea5f26aaeb67776827e7db03b61546"
+      }
+    }
+  ]
+}

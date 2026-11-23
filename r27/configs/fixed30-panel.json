@@ -1,0 +1,160 @@
+{
+  "description": "R27 historical fixed panel, official state 0, each case evaluated once per mode; not a task-held-out set",
+  "modes": [
+    "single_fast",
+    "single_strong",
+    "dual_async"
+  ],
+  "cases": [
+    {
+      "suite": "libero_goal",
+      "task_index": 4,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 7,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 9,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 0,
+      "seed": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 0,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 8,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 2,
+      "seed": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 1,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 7,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 2,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 1,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 9,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 6,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 8,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 5,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 1,
+      "seed": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 8,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 3,
+      "seed": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 2,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 0,
+      "seed": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 7,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 5,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 9,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 2,
+      "seed": 0
+    },
+    {
+      "suite": "libero_10",
+      "task_index": 6,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 3,
+      "seed": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_index": 6,
+      "seed": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_index": 6,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 7,
+      "seed": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_index": 4,
+      "seed": 0
+    }
+  ]
+}

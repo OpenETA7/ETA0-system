@@ -1,0 +1,12 @@
+.model-env
+.model-env.*
+!.model-env.example
+.venv*/
+vendor/
+runs/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+*.py[cod]
+MUJOCO_LOG.TXT
+.DS_Store

@@ -1,0 +1,10 @@
+# Copy to .model-env; use KEY=value without shell quotes or export.
+# Existing process environment values take precedence over this file.
+FAST_MODEL_BASE_URL=https://fast-endpoint.example/v1
+SLOW_MODEL_BASE_URL=https://slow-endpoint.example/v1
+FAST_MODEL=Qwen3.6-35B-A3B
+SLOW_MODEL=kimi-k3.1-pro
+FAST_API_KEY=REPLACE_LOCALLY
+SLOW_API_KEY=REPLACE_LOCALLY
+FAST_MODEL_OPTIONS={"chat_template_kwargs":{"enable_thinking":false},"max_tokens":4096}
+SLOW_MODEL_OPTIONS={"temperature":1,"reasoning_effort":"low","max_tokens":4096}

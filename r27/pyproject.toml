@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autonomous-embodied-harness"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.27", "numpy<2", "Pillow", "PyYAML", "jsonschema"]
+
+[project.optional-dependencies]
+libero = ["mujoco==3.2.7", "robosuite==1.4.1", "bddl==1.0.1", "easydict", "cloudpickle", "gym==0.26.2", "opencv-python==4.11.0.86", "imageio", "imageio-ffmpeg", "torch", "matplotlib", "numba", "scipy", "mcp>=1.28.1,<2", "tiktoken", "prompt_toolkit", "omegaconf", "gymnasium"]
+test = ["pytest", "scipy"]
+
+[project.scripts]
+embodied-eval = "embodied_harness.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
