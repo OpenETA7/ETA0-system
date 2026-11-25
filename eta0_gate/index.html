@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ETA0 · 任务交接</title>
+<link rel="stylesheet" href="/gate.css">
+<header><div class="wrap top"><strong><i aria-hidden="true">↗</i> ETA0</strong><span>机器人工作台</span><span id="phase" role="status">正在连接</span></div></header>
+<main class="wrap">
+<h1>任务交接</h1>
+<p id="notice" role="status"></p>
+<div class="layout">
+<section class="scene"><div class="title"><h2>当前场景</h2><span>准备阶段采集</span></div>
+<div class="views"><figure><img id="external" alt="外部相机拍摄的操作台"><figcaption>外部视角</figcaption></figure><figure><img id="wrist" alt="腕部相机拍摄的夹爪视野"><figcaption>腕部视角</figcaption></figure></div>
+<div class="native"><h3>环境验证目标</h3><p id="benchmark"></p></div></section>
+<section class="handoff"><h2>执行交接</h2><h3>用户原话</h3><p id="goal"></p>
+<p id="dialogue" hidden></p>
+<form id="questionForm" hidden><label for="answer" id="question"></label><textarea id="answer" maxlength="1500" required></textarea><button>提交回答</button></form>
+<form id="reviewForm" hidden><div class="row"><label for="instruction">交给 27B 的指令</label><button type="button" id="restore" class="link">使用原话</button></div><textarea id="instruction" maxlength="1500" required></textarea>
+<div id="demoBlock" hidden><h3>成功轨迹示例</h3><div class="example"><img id="preview" alt="所选历史示例的动作前画面"><p id="demoGoal"></p></div><label class="check"><input type="checkbox" id="keep" checked> 使用此示例</label></div>
+<button>开始执行 <b aria-hidden="true">↗</b></button></form>
+<button id="cancel" class="link cancel" hidden>取消请求</button>
+<div id="receipt" hidden><h3>执行结果</h3><p id="outcome"></p><h3>回执位置</h3><code id="path"></code></div>
+</section></div></main>
+<script src="/gate.js"></script>
+</html>

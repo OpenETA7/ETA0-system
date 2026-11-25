@@ -19,6 +19,25 @@ def run(options):
     src = work / "source"
     with zipfile.ZipFile(io.BytesIO(base64.b64decode(options["source"]))) as bundle:
         bundle.extractall(src)
+    if options.get("mac_preparation"):
+        mailbox = work / "preparation-mailbox"
+        mailbox.mkdir()
+        profile = work / "upper-routing.json"
+        profile.write_text(json.dumps(dict(options["profile"], preparation_mailbox=str(mailbox))))
+        try:
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(src / options["entrypoint"]),
+                    "--boyue-config",
+                    str(profile),
+                    *options["episode_args"],
+                ],
+                check=True,
+            )
+        finally:
+            (mailbox / "closed").touch()
+        return
     with tempfile.TemporaryDirectory() as tmp:
         private = Path(tmp) / "recipient.pem"
         subprocess.run(
@@ -36,6 +55,10 @@ def run(options):
             stderr=subprocess.DEVNULL,
         )
         pub = subprocess.check_output(["openssl", "pkey", "-in", str(private), "-pubout"])
+        if options.get("shared_recipient"):
+            tmp_pub = work / "recipient-public.part"
+            tmp_pub.write_bytes(pub)
+            tmp_pub.replace(work / "recipient-public.pem")
         print("RECIPIENT_PUBLIC_KEY", base64.b64encode(pub).decode(), flush=True)
         envelope = work / "envelope"
         deadline = time.monotonic() + 300

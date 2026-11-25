@@ -146,7 +146,8 @@ def test_generic_upper_config_cannot_mix_in_other_credentials(monkeypatch):
         upper_endpoint(None, deadline=0)
 
 
-def test_cloud_handoff_delivers_profile_without_secret_in_job_specs(tmp_path, monkeypatch):
+@pytest.mark.parametrize("shared", [False, True])
+def test_cloud_handoff_delivers_profile_without_secret_in_job_specs(tmp_path, monkeypatch, shared):
     import base64
     import shutil
     import subprocess
@@ -194,6 +195,12 @@ def test_cloud_handoff_delivers_profile_without_secret_in_job_specs(tmp_path, mo
             "--submit",
         ],
     )
+    if shared:
+        ssh = tmp_path / "ssh"
+        ssh.write_text('#!/bin/sh\nexec sh -c "$1"\n')
+        ssh.chmod(0o700)
+        sys.argv.extend(["--shared-ssh", str(ssh)])
+    read_recipient = boyue_episode.await_recipient
     workers = []
 
     def create(cli, name, program, *, runner, submit):
@@ -208,9 +215,14 @@ def test_cloud_handoff_delivers_profile_without_secret_in_job_specs(tmp_path, mo
             subprocess.run([sys.executable, "-c", program], check=True)
         return name
 
-    def recipient(cli, job):
+    def recipient(cli, job, **options):
         tag, public_key = workers[0].stdout.readline().split()
         assert tag == "RECIPIENT_PUBLIC_KEY"
+        if shared:
+            assert "shared" in options
+            public = read_recipient(cli, job, **options)
+            assert public == base64.b64decode(public_key)
+            return public
         return base64.b64decode(public_key)
 
     monkeypatch.setattr(boyue_episode, "create_job", create)

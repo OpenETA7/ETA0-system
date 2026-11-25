@@ -90,6 +90,8 @@ def run(
     wall_time_s=None,
     budget=None,
     progress_access="default",
+    initial_observation=None,
+    attempt_context=(),
 ):
     """Policy(messages) returns a complete chat-completions response.
 
@@ -190,7 +192,10 @@ def run(
                 return finish("call_budget" if calls >= max_calls else "action_budget")
             if observation is None:
                 local_queries = 0
-                observation = benchmark.observe()
+                observation = (
+                    initial_observation if initial_observation is not None else benchmark.observe()
+                )
+                initial_observation = None
                 overlay, metadata = render_tcp_overlay(
                     observation.wrist_rgb, observation.wrist_camera, observation.robot
                 )
@@ -262,6 +267,13 @@ def run(
                     ]
             if out_of_time():
                 return finish("wall_time_budget")
+            if attempt_context:
+                # Attach frozen examples only to the latest decision, inside tokenizer accounting.
+                latest = inference[-1]
+                inference = [
+                    *inference[:-1],
+                    dict(latest, content=[*attempt_context, *latest["content"]]),
+                ]
             wire = (
                 context_compactor.prepare(inference)
                 if context_compactor is not None

@@ -17,6 +17,7 @@ from pathlib import Path
 from executor_led import EpisodeBudget, ExecutorLed
 from harness import run
 from libero_semantics import SemanticEpisode, use_libero_checkout
+from request_harness import DemoLibrary, InvalidPreparation, run_request
 from rollout_context import HistoryCompactor, bounded_cleanup
 
 UPPER_RETRIES = 4
@@ -43,6 +44,14 @@ def retry_after_seconds(header):
             return max(0, parsedate_to_datetime(header).timestamp() - time.time())
         except (ValueError, TypeError, OverflowError, OSError):
             return 0
+
+
+class UpperRateLimit(RuntimeError):
+    """Keep the server's retry time available to parallel callers."""
+
+    def __init__(self, message, retry_after):
+        super().__init__(message)
+        self.retry_at = time.time() + retry_after
 
 
 class ChatEndpoint:
@@ -90,6 +99,8 @@ class ChatEndpoint:
                 ):
                     raise failure from None
                 retry_after = retry_after_seconds(exc.headers.get("Retry-After"))
+                if exc.code == 429 and retry_after:
+                    failure = UpperRateLimit(str(failure), retry_after)
             except (OSError, http.client.IncompleteRead) as exc:
                 cause = exc.reason if isinstance(exc, urllib.error.URLError) else exc
                 if not (
@@ -133,8 +144,11 @@ class ChatEndpoint:
             )
         finally:
             self.chat_seconds += time.monotonic() - start
-        if self.allowed_models and reply.get("model") not in self.allowed_models:
-            raise ValueError("upper endpoint returned a model outside the configured allowlist")
+        if self.allowed_models:
+            if not isinstance(reply, dict) or not reply.get("model"):
+                raise InvalidPreparation("invalid_response")
+            if reply["model"] not in self.allowed_models:
+                raise ValueError("upper endpoint returned a model outside the configured allowlist")
         return reply
 
     def count(self, messages):
@@ -151,6 +165,19 @@ class ChatEndpoint:
         return info["count"]
 
 
+class RelayedUpper(ChatEndpoint):
+    """Use the same response checks and budget as a directly connected upper endpoint."""
+
+    def __init__(self, mailbox, model, deadline, allowed):
+        super().__init__("", model, None, deadline, allowed_models=allowed)
+        self.mailbox = Path(mailbox)
+
+    def post(self, url, payload):
+        from preparation_relay import request_preparation
+
+        return request_preparation(self.mailbox, payload, self.remaining)
+
+
 def upper_endpoint(boyue_config, deadline):
     if boyue_config is not None:
         config = json.loads(boyue_config.read_text())
@@ -158,6 +185,8 @@ def upper_endpoint(boyue_config, deadline):
         allowed = config.get("allowed_returned_models", [config["model"]])
         if not (isinstance(allowed, list) and allowed and all(isinstance(m, str) for m in allowed)):
             raise ValueError("invalid Boyue allowed_returned_models")
+        if "preparation_mailbox" in config:
+            return RelayedUpper(config["preparation_mailbox"], config["model"], deadline, allowed)
         return ChatEndpoint(
             config["base_url"],
             config["model"],
@@ -239,10 +268,15 @@ def main():
     p.add_argument("--wall-seconds", type=int, default=2700)
     p.add_argument(
         "--mode",
-        choices=["base", "plan", "judge", "teacher"],
-        default="judge",
+        choices=["request", "base", "plan", "judge", "teacher"],
         help="role preset; individual switches override it",
     )
+    for feature in ("rewrite", "retrieve", "clarify"):
+        p.add_argument("--" + feature, action=argparse.BooleanOptionalAction)
+    p.add_argument("--demo-library", type=Path)
+    p.add_argument("--max-attempts", type=int, default=2)
+    p.add_argument("--interactive", action="store_true", help="read clarification answers on stdin")
+    p.add_argument("--gate", type=int, metavar="PORT", help="local browser handoff (0: free port)")
     p.add_argument("--instruction", help="user wording for an intent trial")
     p.add_argument(
         "--recover-length",
@@ -270,8 +304,37 @@ def main():
         help="use the frozen upstream module in the paired evaluation bundle",
     )
     args = p.parse_args()
+    if args.mode is None:
+        args.mode = (
+            "judge"
+            if any(getattr(args, r) is not None for r in ("teacher", "supervisor", "planner"))
+            else "request"
+        )
+    if args.mode == "request" and any(
+        getattr(args, r) for r in ("teacher", "supervisor", "planner")
+    ):
+        p.error(
+            "request mode owns the attempt boundary; select a legacy preset to enable those roles"
+        )
+    if args.mode != "request" and (
+        any(getattr(args, r) is not None for r in ("rewrite", "retrieve", "clarify"))
+        or args.demo_library
+        or args.gate is not None
+        or args.interactive
+        or args.max_attempts != 2
+    ):
+        p.error("request features require --mode request")
+    if args.gate is not None and (args.interactive or not 0 <= args.gate <= 65535):
+        p.error("--gate requires port 0–65535 and owns the interactive handoff")
+    if args.max_attempts < 1:
+        p.error("--max-attempts must be positive")
+    rewrite = args.rewrite is not False
+    clarify = args.clarify is not False
+    retrieve = bool(args.demo_library) if args.retrieve is None else args.retrieve
+    if retrieve and not args.demo_library:
+        p.error("--retrieve requires --demo-library")
     roles = dict(
-        planner=args.mode != "base",
+        planner=args.mode in {"plan", "judge", "teacher"},
         supervisor=args.mode in {"judge", "teacher"},
         teacher=args.mode == "teacher",
     )
@@ -290,6 +353,8 @@ def main():
     collect_progress = completion_enabled or args.progress_query_ablation
     progress_access = "default"
     if args.progress_query_ablation:
+        progress_access = "on_request" if completion_enabled else "hidden"
+    if args.mode == "request":
         progress_access = "on_request" if completion_enabled else "hidden"
     budget = EpisodeBudget(args.wall_seconds, args.upper_wall_seconds)
     config = json.loads(args.executor_client.read_text())
@@ -325,6 +390,8 @@ def main():
             else args.task_length == "long"
         )
         need_upper = (roles["planner"] and long_task) or roles["teacher"] or roles["supervisor"]
+        if args.mode == "request":
+            need_upper = rewrite or clarify or retrieve
         upper = (
             upper_endpoint(args.boyue_config, lambda: budget.upper_deadline) if need_upper else None
         )
@@ -340,7 +407,7 @@ def main():
                 plateau=args.stall_plateau,
                 max_upper_calls=args.max_upper_calls,
             )
-            if upper
+            if upper and args.mode != "request"
             else None
         )
         (args.output / "run.json").write_text(
@@ -363,7 +430,16 @@ def main():
                     upper_wall_seconds=args.upper_wall_seconds,
                     max_upper_calls=args.max_upper_calls,
                     executor=lower.model,
-                    upper=upper.model if hierarchy else None,
+                    upper=upper.model if upper else None,
+                    request_features=dict(
+                        rewrite=rewrite,
+                        retrieve=retrieve,
+                        clarify=clarify,
+                        max_attempts=args.max_attempts,
+                        gui_gate=args.gate is not None,
+                    )
+                    if args.mode == "request"
+                    else None,
                     max_actions=args.max_actions,
                     max_calls=args.max_calls,
                     wall_seconds=args.wall_seconds,
@@ -376,14 +452,15 @@ def main():
             with (args.output / "compactions.jsonl").open("a") as stream:
                 stream.write(json.dumps(event) + "\n")
 
-        compactor = HistoryCompactor(
-            task=task,
-            count_tokens=lower.count,
-            record=record,
-            summarize=lambda messages, attempt, schema: lower.chat(
-                messages, max_tokens=4096, chat_template_kwargs={"enable_thinking": False}
-            ),
-        )
+        def new_compactor():
+            return HistoryCompactor(
+                task=task,
+                count_tokens=lower.count,
+                record=record,
+                summarize=lambda messages, attempt, schema: lower.chat(
+                    messages, max_tokens=4096, chat_template_kwargs={"enable_thinking": False}
+                ),
+            )
 
         execute = ExecutorPolicy(lower, args.seed, args.recover_length)
         prompt = ACTION_PROMPT.replace(
@@ -395,6 +472,86 @@ def main():
                 "No demonstration or target oracle is provided.",
                 "A hypothetical recovery example may be provided after repeated difficulty.",
             )
+        if args.mode == "request":
+            if retrieve:
+                prompt = prompt.replace(
+                    "No demonstration or target oracle is provided.",
+                    "A recorded example may illustrate a different scene. Use current geometry.",
+                )
+
+            def ask(question):
+                try:
+                    frames = args.output / "rollout/preparation-01"
+                    print(f"External view: {frames / 'external.jpg'}")
+                    print(f"Wrist view: {frames / 'wrist.jpg'}")
+                    return input(question + " ")
+                except EOFError:
+                    return None
+
+            def chat(messages, *, deadline, **options):
+                upper.deadline = deadline
+                return upper.chat(messages, **options)
+
+            def attempt(path, current, observation, context, number):
+                lower.deadline = current.lower_deadline
+                policy = ExecutorPolicy(
+                    lower, args.seed + (number - 1) * args.max_calls, args.recover_length
+                )
+                return run(
+                    adapter,
+                    policy,
+                    instruction=task,
+                    action_prompt=prompt,
+                    output_dir=path,
+                    max_calls=args.max_calls,
+                    max_actions=args.max_actions,
+                    native_finish_feedback=True,
+                    bind_observation_ids=True,
+                    context_compactor=new_compactor(),
+                    initial_observation=observation,
+                    attempt_context=context,
+                    budget=current,
+                    progress_access=progress_access,
+                )
+
+            request_dir = args.output / "rollout"
+            gate = None
+            if args.gate is not None:
+                from eta0_gate import RequestGate
+
+                gate = RequestGate(args.gate, native_goal)
+            try:
+                result = run_request(
+                    adapter,
+                    goal=task,
+                    output=request_dir,
+                    execute_attempt=attempt,
+                    chat=chat if upper else None,
+                    rewrite=rewrite,
+                    retrieve=retrieve,
+                    clarify=clarify,
+                    ask=ask if args.interactive else None,
+                    library=DemoLibrary(args.demo_library) if retrieve else None,
+                    max_attempts=args.max_attempts,
+                    gate=gate,
+                    wall_seconds=args.wall_seconds,
+                    upper_seconds=args.upper_wall_seconds,
+                    max_upper_calls=args.max_upper_calls,
+                )
+                result.update(
+                    lower_chat_calls=lower.chat_calls,
+                    lower_chat_s=lower.chat_seconds,
+                    upper_calls=upper.chat_calls if upper else 0,
+                    episode_wall_s=time.monotonic() - budget.start,
+                )
+                (request_dir / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
+                if gate:
+                    gate.finish(result, (request_dir / "RESULT.json").resolve())
+            finally:
+                if gate:
+                    gate.close()
+            print(json.dumps(result, ensure_ascii=False))
+            return
         remaining = budget.lower_deadline() - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("episode deadline expired during initialization")
@@ -406,7 +563,7 @@ def main():
             max_actions=args.max_actions,
             native_finish_feedback=True,
             bind_observation_ids=True,
-            context_compactor=compactor,
+            context_compactor=new_compactor(),
         )
         if args.upstream_base:
             from upstream_harness import run as upstream_run

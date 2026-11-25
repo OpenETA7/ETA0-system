@@ -7,17 +7,25 @@ name = "minimal-robot-harness"
 version = "0.1.0"
 description = "Minimal multimodal robot rollout loop and calibrated TCP overlay"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.24", "Pillow>=10"]
+dependencies = ["numpy>=1.23.5", "Pillow>=10"]
 
 [project.scripts]
 eta0-run = "eta0_run:main"
 
 [project.optional-dependencies]
 libero = ["openeta-bench @ git+https://github.com/OpenETA7/OpenETA-Benchmark.git@c39883cd94c3b413c19e048ab82317fc6e024fa1"]
+simulation = ["mujoco==2.3.7", "robosuite==1.4.1", "numpy==1.23.5", "scipy==1.10.1",
+    "numba==0.57.1", "opencv-python==4.8.1.78", "bddl==1.0.1", "gym==0.25.2",
+    "torch==2.6.0", "imageio[ffmpeg]", "easydict", "pyyaml", "h5py", "cloudpickle", "future", "matplotlib>=3.6,<3.9"]
 dev = ["pytest>=8", "ruff>=0.9"]
 
+[tool.setuptools.package-data]
+eta0_sim = ["actions.txt"]
+eta0_gate = ["*.html", "*.css", "*.js"]
+
 [tool.setuptools]
-py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "executor_led", "libero_semantics", "eta0_run"]
+packages = ["eta0_sim", "eta0_gate"]
+py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "executor_led", "libero_semantics", "request_harness", "preparation_relay", "eta0_run", "rollout_libero_minimal"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,23 +1,29 @@
 # ETA0 System
 
-给 fullmix step2500 的 27B 具身模型增加长程任务规划、视觉监督和单样例上下文学习。一次用户请求对应一次环境 reset。27B 持有完整目标，自主依据外部相机、腕部相机及实测状态选择动作。默认仅给长任务一份简短计划，在连续停滞时请求视觉监督。整个过程共用 benchmark 的动作校验、控制器和原生成功条件。
+27B fullmix step2500 接收用户的完整目标，在一轮内自主观察、规划、查询进度和执行。默认的 `request` 模式让上层在开跑前看双相机画面，按需询问用户、改写指令，并可从成功轨迹库选择一个示例。整轮用完预算后，上层可以根据末态更新交接内容。下一轮 27B 从同一个环境继续，原生成功即结束请求。上层返回空内容、截断或无效交接时，在自己的预算内最多额外重试 4 次。仍失败时，27B 按原指令及已确认的用户答复继续，本轮使用零个示例。
 
-[当前控制策略、消融参数与轨迹回放](docs/executor-led.md) · [第一版系统设计与评测方案](docs/system-design.md) · [基座使用说明](README.base.md)
+[请求级运行与双系统对照](docs/request-harness.md) · [旧版轮内监督策略](docs/executor-led.md) · [基座使用说明](README.base.md)
 
 27B 可以自主调用 `check_task_completion`，读取环境最近一次原生评估中各项目标的满足情况，再决定下一步。所有任务使用同一个工具协议。仅测试这项能力时，可用 `--mode base --completion-query` 和 `--mode base --no-completion-query` 做配对，两个配置都只使用 27B。正式的 40 任务 × 5 初态比较使用[进度查询配对消融方案](docs/progress-query-ablation.md)，它统一了两组的回执采集和提前 finish 反馈。
 
+## 给 coding agent 的部署提示词
+
+可以把以下指令发给 Codex 或其他具备终端访问能力的 coding agent：
+
+> 请部署 OpenETA7/ETA0-system 的请求级 harness。优先使用现有 checkout，需要时克隆仓库。用 Python 3.11 创建虚拟环境并安装 dev extra，运行 `eta0-run --help` 及 `python examples/request_demo.py --output <新目录>`，读取 RESULT.json 检查两轮续做。然后按 docs/request-harness.md 检查 LIBERO 仿真解释器、固定版本 checkout、27B client.json、商用模型配置和成功示例库。实机配置齐备时，在仿真解释器安装 libero extra，用 `--mode request --rewrite --retrieve --demo-library <路径>` 跑一个 LIBERO 初态；显式传入私有客户端配置及 LIBERO 根目录。如果仅有 27B 服务，使用 `--mode request --no-clarify --no-rewrite --no-retrieve` 验证基线。如果只有示例库缺失，关闭检索，验证指令改写。报告实际启用的功能、首轮与最终成功标记、上下层调用次数、耗时、输出目录及缺少的配置。凭据从本机私有配置读取。
+
+历史实验依据与产品设计见[11 月 24 日设计提案](docs/attempt-design-2026-11-24.md)。
+
 ## 本地体验
 
-需要 Python 3.10 或以上版本。下列历史示例使用第一版分层控制，在同一个模拟 episode 中执行两个短任务，展示 supervisor 如何切换目标，以及每次切换后 teacher 给 27B 的指导内容。模型回复和控制器均由脚本模拟。
+需要 Python 3.10 或以上版本。下面的离线示例使用脚本模型与两步模拟机器人。第一轮只够执行一个动作，第二轮从上次位置续做。打开输出目录的 `RESULT.json` 和 `events.jsonl` 可查看澄清、轮次、终止原因与调用数。
 
 ```bash
 uv venv --python 3.12
 uv pip install -e '.[dev]'
-.venv/bin/python examples/hierarchy_demo.py --output outputs/first-demo
+.venv/bin/python examples/request_demo.py --output outputs/first-request
 .venv/bin/python -m pytest -q
 ```
-
-每次使用新的输出目录。打开 `events.jsonl`，按 `subgoal → action_started → execution → upper_request → upper_response` 查看决策及引用的观测目录。每个观测目录包含外部 RGB、腕部原图、TCP 叠加图和投影元数据。
 
 ## 在 YICloud 运行一个 LIBERO episode
 
@@ -29,14 +35,14 @@ python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode base --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-base
 ```
 
-完整层级使用支持多图输入和 Chat Completions 的商用端点。通过运行环境提供 `ETA0_UPPER_BASE_URL`（以 `/v1` 结尾）、`ETA0_UPPER_MODEL` 和 `ETA0_UPPER_API_KEY`，客户端须能访问该端点。上层将收到所选相机帧、用户目标和实测状态。
+历史 teacher 模式使用支持多图输入和 Chat Completions 的商用端点。通过运行环境提供 `ETA0_UPPER_BASE_URL`（以 `/v1` 结尾）、`ETA0_UPPER_MODEL` 和 `ETA0_UPPER_API_KEY`，客户端须能访问该端点。上层将收到所选相机帧、用户目标和实测状态。
 
 ```bash
 python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode teacher --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-teacher
 ```
 
-默认 `--mode judge` 开启长任务规划和停滞监督。使用 `--mode base --teacher` 可单独评估停滞后的示范；`--planner`、`--supervisor`、`--teacher` 及各自的 `--no-*` 可自由组合。`--instruction` 可覆盖用户措辞，`--recover-length` 可在思考被截断后尝试一次直接生成。新版默认加载 0.3.2 revised 指令并启用原生完成度查询。仿真解释器依赖与 `--libero-source-root` 的设置见[接入说明](docs/executor-led.md)。
+显式选择旧版 `--mode judge` 会开启长任务规划和停滞监督。使用 `--mode base --teacher` 可单独评估停滞后的示范；`--planner`、`--supervisor`、`--teacher` 及各自的 `--no-*` 可自由组合。`--instruction` 可覆盖用户措辞，`--recover-length` 可在思考被截断后尝试一次直接生成。新版默认加载 0.3.2 revised 指令并启用原生完成度查询。仿真解释器依赖与 `--libero-source-root` 的设置见[接入说明](docs/executor-led.md)。
 
 `deploy/run_libero.py` 从冻结评测计划读取解释器、PhysLM 路径和仿真环境变量。其他 benchmark 可以通过 `harness.run(benchmark, policy, hierarchy=...)` 接入。
 
