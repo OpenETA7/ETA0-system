@@ -72,9 +72,10 @@ def main():
         python = str(venv / "bin/python")
         if not Path(python).is_file():
             subprocess.run([uv, "venv", "--python", "3.11", str(venv)], check=True)
-        subprocess.run(
-            [uv, "pip", "install", "--python", python, f"{ROOT}[simulation,libero]"], check=True
-        )
+        install = [uv, "pip", "install", "--python", python]
+        if sys.platform.startswith("linux"):
+            install += ["--torch-backend", "cpu"]
+        subprocess.run([*install, f"{ROOT}[simulation,libero]"], check=True)
     env["ETA0_SIM_PYTHON"] = python
     if sys.platform.startswith("linux"):
         env.setdefault("MUJOCO_GL", "osmesa")

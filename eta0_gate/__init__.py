@@ -23,10 +23,12 @@ class RequestGate:
             def log_message(self, *_):
                 pass  # Keep request content and access tokens out of logs.
 
-            def respond(self, status, body=b"", kind="application/json"):
+            def respond(self, status, body=b"", kind="application/json", etag=None):
                 self.send_response(status)
                 self.send_header("Content-Type", kind)
                 self.send_header("Content-Length", str(len(body)))
+                if etag:
+                    self.send_header("ETag", etag)
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("Referrer-Policy", "no-referrer")
@@ -62,7 +64,12 @@ class RequestGate:
                 elif self.path == "/state" and self.authorized():
                     with gate.condition:
                         snapshot = dict(gate.state)
-                    self.respond(200, json.dumps(snapshot).encode())
+                    etag = f'"{snapshot["version"]}"'
+                    if self.headers.get("If-None-Match") == etag:
+                        self.send_response(304)
+                        self.end_headers()
+                        return
+                    self.respond(200, json.dumps(snapshot).encode(), etag=etag)
                     if snapshot["phase"] == "finished":
                         gate.final_seen.set()
                 else:
@@ -151,6 +158,10 @@ class RequestGate:
             calls=result.get("calls", 0),
             receipt=str(receipt),
         )
+        self.final_seen.wait(timeout=3)
+
+    def failed(self, error_type):
+        self.update("finished", success=False, reason="runtime_error", error_type=error_type)
         self.final_seen.wait(timeout=3)
 
     def close(self):

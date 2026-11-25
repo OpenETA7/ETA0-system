@@ -2,12 +2,23 @@
 
 一次请求只初始化一次 LIBERO 环境。默认有两轮机会，每轮给 27B 最多 120 个动作、360 次决策、2700 秒。上层另有整个请求共享的 900 秒和 8 次逻辑调用。每轮只在交接完毕后启动 27B 时钟。请求总延迟包含上层推理、用户等待和续做。
 
+## 首次部署与 GUI
+
+从干净克隆运行 `python3 deploy/first_run.py`。依赖和私有配置见 [README](../README.md)。运行时可指定 `--suite`、`--task`、`--initial-index` 和 `--instruction`。例如选择中间抽屉任务：
+
+```bash
+python3 deploy/first_run.py --suite libero_goal --task 0 --initial-index 5 \
+  --instruction "请打开柜子的中间抽屉" --gate 8765
+```
+
+Gate 只在首轮动作之前等待人工输入。使用原指令或手动纠正的内容写入交接记录，手动更改的指令在重试时继续生效；移除示例也会应用于后续轮次。运行页会显示当前执行轮次。环境成功始终依据所选任务的原生条件，建议选择与用户目标一致的任务。相机图像与审批仅经绑定本机的会话端口提供，远程机器可使用 SSH 转发。终端链接含会话凭证。
+
 ## 运行
 
 ```bash
 python deploy/run_libero.py --mode request --suite libero_goal --task 0 --initial-index 5 \
   --executor-client "$ETA0_EXECUTOR_CLIENT" --boyue-config "$BOYUE_KIMI_PROFILE" \
-  --libero-source-root "$ETA0_LIBERO_ROOT" --instruction "拿起桌上的银色罐子" \
+  --libero-source-root "$ETA0_LIBERO_ROOT" --instruction "打开柜子的中间抽屉" \
   --interactive --rewrite --retrieve --demo-library "$ETA0_DEMO_LIBRARY" \
   --output /tmp/eta0-first-request
 ```

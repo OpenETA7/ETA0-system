@@ -8,9 +8,26 @@
 
 ## 给 coding agent 的部署提示词
 
-可以把以下指令发给 Codex 或其他具备终端访问能力的 coding agent：
+把这句话发给有终端权限的 coding agent：
 
-> 请部署 OpenETA7/ETA0-system 的请求级 harness。优先使用现有 checkout，需要时克隆仓库。用 Python 3.11 创建虚拟环境并安装 dev extra，运行 `eta0-run --help` 及 `python examples/request_demo.py --output <新目录>`，读取 RESULT.json 检查两轮续做。然后按 docs/request-harness.md 检查 LIBERO 仿真解释器、固定版本 checkout、27B client.json、商用模型配置和成功示例库。实机配置齐备时，在仿真解释器安装 libero extra，用 `--mode request --rewrite --retrieve --demo-library <路径>` 跑一个 LIBERO 初态；显式传入私有客户端配置及 LIBERO 根目录。如果仅有 27B 服务，使用 `--mode request --no-clarify --no-rewrite --no-retrieve` 验证基线。如果只有示例库缺失，关闭检索，验证指令改写。报告实际启用的功能、首轮与最终成功标记、上下层调用次数、耗时、输出目录及缺少的配置。凭据从本机私有配置读取。
+> 请克隆 OpenETA7/ETA0-system 的 codex/request-gate-release 分支，在可访问我现有 27B 服务的 Linux 仿真机上按 README 运行 deploy/first_run.py，使用已有私有配置完成一个真实 LIBERO 请求，给我环境目标、成功标记、实际启用的功能和回执路径。
+
+**首个真实请求**需要已有的 27B Chat Completions 服务及其 token 计数接口、Linux 上的 Git、uv 和 Mesa 离屏渲染库。Ubuntu CPU 仿真机需可加载 `libOSMesa.so.8` 和 `libGL.so.1`（系统包 `libosmesa6`、`libgl1`）。从仓库根目录运行：
+
+```bash
+export ETA0_EXECUTOR_CLIENT=/path/to/private/client.json
+python3 deploy/first_run.py
+```
+
+启动器在用户缓存中创建 Python 3.11 环境、安装 CPU 仿真依赖并拉取固定版本的 LIBERO 资产。首次安装需要访问 GitHub、Python 包源及 PyTorch CPU 软件源。设置 `ETA0_SIM_PYTHON`、`ETA0_LIBERO_ROOT` 可复用已有的解释器和固定版本资产。缓存目录可用 `ETA0_CACHE` 指定。默认使用 LIBERO-Object 的第 0 个任务、初态 5；每次写入新的 `outputs/first-request-*`。任务未完成也会报告原因。已有八卡服务可直接复用。
+
+| 私有配置 | 启用的功能 |
+|---|---|
+| `ETA0_EXECUTOR_CLIENT` | 27B 自主执行；JSON 含 `base_url`、`model`、`api_key` |
+| 再提供 `ETA0_UPPER_CONFIG` | 视觉上层澄清和改写；使用相同 JSON 字段，可指定 `allowed_returned_models` |
+| 再提供 `ETA0_DEMO_LIBRARY` | 从成功轨迹库选择示例；值为 `library.json` 路径 |
+
+**打开可选的 GUI Gate**：运行 `python3 deploy/first_run.py --gate 8765`，在浏览器打开终端打印的完整会话链接。在远程仿真机运行时，先从自己的电脑执行 `ssh -N -L 8765:127.0.0.1:8765 <仿真机 SSH 别名>`。页面显示准备时采集的双相机图像、用户指令、环境验证目标及上层选中的示例。可以回答澄清、编辑、恢复原话、取消示例或取消整次请求。确认后 27B 自主执行，页面会显示原生判定和回执。省略 `--gate` 即可直接执行，带上层且没有交互终端时，待答澄清会随回执返回。
 
 历史实验依据与产品设计见[11 月 24 日设计提案](docs/attempt-design-2026-11-24.md)。
 
@@ -22,6 +39,8 @@
 uv venv --python 3.12
 uv pip install -e '.[dev]'
 .venv/bin/python examples/request_demo.py --output outputs/first-request
+# 可选，在浏览器中回答脚本问题并审阅这次交接
+.venv/bin/python examples/request_demo.py --gate 8765 --output outputs/gui-demo
 .venv/bin/python -m pytest -q
 ```
 
@@ -44,7 +63,7 @@ python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
 
 显式选择旧版 `--mode judge` 会开启长任务规划和停滞监督。使用 `--mode base --teacher` 可单独评估停滞后的示范；`--planner`、`--supervisor`、`--teacher` 及各自的 `--no-*` 可自由组合。`--instruction` 可覆盖用户措辞，`--recover-length` 可在思考被截断后尝试一次直接生成。新版默认加载 0.3.2 revised 指令并启用原生完成度查询。仿真解释器依赖与 `--libero-source-root` 的设置见[接入说明](docs/executor-led.md)。
 
-`deploy/run_libero.py` 从冻结评测计划读取解释器、PhysLM 路径和仿真环境变量。其他 benchmark 可以通过 `harness.run(benchmark, policy, hierarchy=...)` 接入。
+`deploy/run_libero.py` 支持 `ETA0_RUNTIME_PLAN` 并兼容旧集群快照；新部署直接使用仓库内的仿真适配器。其他 benchmark 可以通过 `harness.run(benchmark, policy, hierarchy=...)` 接入。
 
 ## 从 Mac 用 Boyue 启动一次 teacher 联调
 

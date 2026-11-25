@@ -296,10 +296,12 @@ def run_request(
             gate.scene(obs, goal)
         instruction, demo_id = goal, None
         may_ask = clarify and number == 1
-        if rewrite or retrieve or may_ask:
+        may_rewrite = rewrite and fixed_instruction is None
+        may_retrieve = retrieve and not remove_demo
+        if may_rewrite or may_retrieve or may_ask:
             candidates = (
                 library.candidates(goal, adapter.meta.get("initial_state_sha256"))
-                if retrieve
+                if may_retrieve
                 else []
             )
             log("preparation_started", attempt=number, candidates=[r["id"] for r in candidates])
@@ -313,8 +315,8 @@ def run_request(
                     previous,
                     getattr(adapter, "completion", None),
                     candidates,
-                    rewrite=rewrite,
-                    retrieve=retrieve,
+                    rewrite=may_rewrite,
+                    retrieve=may_retrieve,
                     clarify=may_ask,
                     ask=gate.ask if gate else ask,
                     budget=budget,

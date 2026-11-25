@@ -39,12 +39,19 @@ function render(s) {
     byId("receipt").hidden = false;
     byId("outcome").textContent = s.reason === "user_cancelled" ? "已取消" :
       (s.success ? "环境目标已达成" : "环境目标未达成") + " · " + s.reason;
-    byId("path").textContent = s.receipt;
+    if (s.reason === "runtime_error") byId("outcome").textContent = "运行中断 · " + s.error_type;
+    byId("path").textContent = s.receipt || "请查看启动终端中的错误记录";
   }
 }
 async function poll() {
   try {
-    const r = await fetch("/state", {headers, cache:"no-store"});
+    const requestHeaders = {...headers};
+    if (state.version !== undefined) requestHeaders["If-None-Match"] = '"' + state.version + '"';
+    const r = await fetch("/state", {headers:requestHeaders, cache:"no-store"});
+    if (r.status === 304) {
+      if (state.phase !== "finished") setTimeout(poll, 750);
+      return;
+    }
     if (!r.ok) throw Error();
     render(await r.json());
   } catch {

@@ -547,6 +547,10 @@ def main():
                 (request_dir / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
                 if gate:
                     gate.finish(result, (request_dir / "RESULT.json").resolve())
+            except Exception as exc:
+                if gate:
+                    gate.failed(type(exc).__name__)
+                raise
             finally:
                 if gate:
                     gate.close()

@@ -20,3 +20,11 @@ The source code's existing all-rights-reserved notice is retained in LICENSE;
 this repository does not introduce an open-source license. Benchmark imagery
 is retained here as small private experiment examples; upstream benchmark asset
 rights are not changed. No full dataset is redistributed here.
+
+The bundled LIBERO simulator entry point (`rollout_libero_minimal.py`) and
+`eta0_sim/` carry the camera capture, calibrated geometry, synchronized gripper,
+validated absolute OSC trajectories and action prompt used by the project's
+2026-11-19 frozen LIBERO evaluation. These are drawn from the evaluation adapter
+and the owner's PhysLM rollout code. Only the simulator path is packaged.
+The launcher fetches LIBERO at revision `8f1084e3132a39270c3a13ebe37270a43ece2a01`;
+benchmark assets and model weights are supplied separately.
