@@ -45,6 +45,8 @@ def demo(output, library=None, gate=None):
             budget=budget,
             initial_observation=obs,
             attempt_context=context,
+            on_observation=getattr(gate, "observe_live", None),
+            should_stop=getattr(gate, "stop_requested", None),
         )
 
     return run_request(

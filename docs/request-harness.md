@@ -4,14 +4,14 @@
 
 ## 首次部署与 GUI
 
-从干净克隆运行 `python3 deploy/first_run.py`。依赖和私有配置见 [README](../README.md)。运行时可指定 `--suite`、`--task`、`--initial-index` 和 `--instruction`。例如选择中间抽屉任务：
+设备无关的部署路径与私有配置见 [README](../README.md)。具备 27B 端点后可直接运行 `python3 deploy/first_run.py`，也可指定 `--suite`、`--task`、`--initial-index` 和 `--instruction`；暂未部署 27B 时可先运行 `examples/request_demo.py --gate 8765 --output outputs/gui-demo` 体验完整交接界面。例如选择中间抽屉任务：
 
 ```bash
 python3 deploy/first_run.py --suite libero_goal --task 0 --initial-index 5 \
   --instruction "请打开柜子的中间抽屉" --gate 8765
 ```
 
-Gate 只在首轮动作之前等待人工输入。使用原指令或手动纠正的内容写入交接记录，手动更改的指令在重试时继续生效；移除示例也会应用于后续轮次。运行页会显示当前执行轮次。环境成功始终依据所选任务的原生条件，建议选择与用户目标一致的任务。相机图像与审批仅经绑定本机的会话端口提供，远程机器可使用 SSH 转发。终端链接含会话凭证。
+Gate 只在首轮动作之前等待人工输入，支持双视角画面点击放大检视、澄清对话记录、指令改写状态提示与一键恢复（原话 / 上层建议）、成功轨迹示例预览与开关切换，以及执行期计时和验收回执复制。使用原指令或手动纠正的内容写入交接记录，手动更改的指令在重试时继续生效；移除示例也会应用于后续轮次。环境成功始终依据所选任务的原生条件，建议选择与用户目标一致的任务。相机图像与审批仅经绑定本机的会话端口提供，远程机器可使用 SSH 转发，终端链接含一次性会话凭证。
 
 ## 运行
 

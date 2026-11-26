@@ -72,6 +72,36 @@ def parse_action(content):
     return action
 
 
+def write_observation(observation, folder, instruction):
+    """Archive the default external/wrist input and construct its policy message."""
+    overlay, metadata = render_tcp_overlay(
+        observation.wrist_rgb, observation.wrist_camera, observation.robot
+    )
+    external_path, wrist_path = folder / "external.png", folder / "wrist_overlay.png"
+    observation.external_rgb.save(external_path)
+    observation.wrist_rgb.save(folder / "wrist_raw.png")
+    overlay.save(wrist_path)
+    (folder / "overlay.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    context = dict(
+        task=instruction,
+        observation_id=observation.robot.observation_id,
+        reference_frame=observation.robot.reference_frame,
+        measured_state=observation.state,
+        overlay_notice=metadata["notice"],
+    )
+    message = {
+        "role": "user",
+        "content": [
+            text("External RGB"),
+            image_part(external_path),
+            text("Wrist RGB with measured TCP overlay"),
+            image_part(wrist_path),
+            text(context),
+        ],
+    }
+    return context, message
+
+
 def run(
     benchmark: Benchmark,
     policy,
@@ -92,6 +122,10 @@ def run(
     progress_access="default",
     initial_observation=None,
     attempt_context=(),
+    on_observation=None,
+    should_stop=None,
+    observation_writer=write_observation,
+    query_backend=None,
 ):
     """Policy(messages) returns a complete chat-completions response.
 
@@ -125,7 +159,11 @@ def run(
     executing = False
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=False)
-    messages = [{"role": "system", "content": action_prompt + "\n" + QUERY_NOTICE}]
+    query_notice = QUERY_NOTICE if query_backend is None else query_backend.QUERY_NOTICE
+    query_stages = QUERY_STAGES if query_backend is None else query_backend.QUERY_STAGES
+    run_query = query if query_backend is None else query_backend.query
+    system_prompt = action_prompt + ("\n" + query_notice if query_notice else "")
+    messages = [{"role": "system", "content": system_prompt}]
     if progress_access not in {"default", "on_request", "hidden"}:
         raise ValueError("unknown progress access mode")
     query_available = (
@@ -188,6 +226,8 @@ def run(
                 return finish("native_success")
             if out_of_time():
                 return finish("wall_time_budget")
+            if should_stop is not None and should_stop():
+                return finish("user_stopped")
             if calls >= max_calls or actions >= max_actions:
                 return finish("call_budget" if calls >= max_calls else "action_budget")
             if observation is None:
@@ -196,35 +236,10 @@ def run(
                     initial_observation if initial_observation is not None else benchmark.observe()
                 )
                 initial_observation = None
-                overlay, metadata = render_tcp_overlay(
-                    observation.wrist_rgb, observation.wrist_camera, observation.robot
-                )
                 folder = out / f"observation-{actions:03d}"
                 folder.mkdir()
-                external_path, wrist_path = folder / "external.png", folder / "wrist_overlay.png"
-                observation.external_rgb.save(external_path)
-                observation.wrist_rgb.save(folder / "wrist_raw.png")
-                overlay.save(wrist_path)
-                (folder / "overlay.json").write_text(json.dumps(metadata, indent=2) + "\n")
-                context = dict(
-                    task=instruction,
-                    observation_id=observation.robot.observation_id,
-                    reference_frame=observation.robot.reference_frame,
-                    measured_state=observation.state,
-                    overlay_notice=metadata["notice"],
-                )
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            text("External RGB"),
-                            image_part(external_path),
-                            text("Wrist RGB with measured TCP overlay"),
-                            image_part(wrist_path),
-                            text(context),
-                        ],
-                    }
-                )
+                context, obs_message = observation_writer(observation, folder, instruction)
+                messages.append(obs_message)
                 observation_messages.append([len(messages) - 1])
                 # Evict image bytes only. Text and returned reasoning remain.
                 for group in observation_messages[:-keep_observations]:
@@ -236,6 +251,14 @@ def run(
                             for part in messages[index]["content"]
                         ]
                 event("observation", context=context, folder=str(folder.name))
+                if on_observation is not None:
+                    wrist_overlay_path = folder / "wrist_overlay.png"
+                    if wrist_overlay_path.is_file():
+                        with Image.open(wrist_overlay_path) as im:
+                            overlay_img = im.copy()
+                    else:
+                        overlay_img = observation.wrist_rgb
+                    on_observation(observation, actions, calls, overlay_img)
                 completion = getattr(benchmark, "completion", None)
                 if completion is not None:
                     context = dict(context, completion=completion)
@@ -349,10 +372,10 @@ def run(
                     event("completion_query", request=action, receipt=completion, executed_ticks=0)
                     messages.append({"role": "user", "content": [text(completion)]})
                     continue
-                if action.get("stage") in QUERY_STAGES:
+                if action.get("stage") in query_stages:
                     if local_queries >= max_queries_per_observation:
                         raise ValueError("query budget for this observation exhausted")
-                    annotated, query_feedback = query(action, observation)
+                    annotated, query_feedback = run_query(action, observation)
                 else:
                     benchmark.validate_action(action, observation)
             except (ValueError, TypeError, KeyError) as error:
@@ -361,7 +384,7 @@ def run(
                 event("rejection", error=str(error), executed=False)
                 messages.append({"role": "user", "content": [text("Rejected: " + str(error))]})
                 continue
-            if action.get("stage") in QUERY_STAGES:
+            if action.get("stage") in query_stages:
                 queries += 1
                 local_queries += 1
                 query_path = folder / f"query-{local_queries:02d}.png"
@@ -389,6 +412,8 @@ def run(
             # never converted into a zero-execution validation error or retried.
             if out_of_time():
                 return finish("wall_time_budget")
+            if should_stop is not None and should_stop():
+                return finish("user_stopped")
             event("action_started", action=action)
             executing = True
             feedback = benchmark.execute(action)

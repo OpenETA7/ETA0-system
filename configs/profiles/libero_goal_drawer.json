@@ -1,0 +1,13 @@
+{
+  "id": "libero_goal_drawer",
+  "description": "LIBERO-Goal cabinet middle drawer profile with read-only articulated-interaction skill card.",
+  "suite": "libero_goal",
+  "task": 0,
+  "initial_index": 5,
+  "instruction": "请打开柜子的中间抽屉",
+  "max_attempts": 2,
+  "skills_dir": "skills",
+  "skill_ids": [
+    "articulated-interaction"
+  ]
+}

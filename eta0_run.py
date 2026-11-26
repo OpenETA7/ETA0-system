@@ -21,6 +21,44 @@ from request_harness import DemoLibrary, InvalidPreparation, run_request
 from rollout_context import HistoryCompactor, bounded_cleanup
 
 UPPER_RETRIES = 4
+DEFAULT_MAX_MODEL_LEN = 262144
+DEFAULT_MAX_OUTPUT_TOKENS = 16384
+
+
+def adaptive_context_budget(max_model_len, requested_output=DEFAULT_MAX_OUTPUT_TOKENS):
+    """Preserve the pinned 262K profile verbatim and scale safely on smaller contexts."""
+    if max_model_len == DEFAULT_MAX_MODEL_LEN:
+        return DEFAULT_MAX_MODEL_LEN, min(requested_output, DEFAULT_MAX_OUTPUT_TOKENS), 200000
+    if max_model_len < 8192:
+        raise ValueError(f"executor max_model_len too small ({max_model_len}); need at least 8192")
+    max_output = min(requested_output, max(2048, max_model_len // 4))
+    threshold = min(int(max_model_len * 0.76), max_model_len - max_output - 2048)
+    return max_model_len, max_output, max(1024, threshold)
+
+
+def estimate_tokens(messages):
+    """Conservative local token estimate when an OpenAI-compatible server has no /tokenize."""
+    total = 0
+    for message in messages:
+        total += 16
+        content = message.get("content")
+        if isinstance(content, str):
+            total += max(1, (len(content) + 1) // 2)
+        elif isinstance(content, list):
+            for part in content:
+                if not isinstance(part, dict):
+                    total += max(1, (len(str(part)) + 1) // 2)
+                elif part.get("type") == "image_url":
+                    total += 1024
+                elif part.get("type") == "text":
+                    total += max(1, (len(part.get("text") or "") + 1) // 2)
+                else:
+                    total += max(1, (len(json.dumps(part, ensure_ascii=False)) + 1) // 2)
+        for key in ("reasoning", "reasoning_content"):
+            extra = message.get(key)
+            if isinstance(extra, str) and extra:
+                total += max(1, (len(extra) + 1) // 2)
+    return total
 
 
 def http_error_codes(response):
@@ -56,7 +94,18 @@ class UpperRateLimit(RuntimeError):
 
 class ChatEndpoint:
     def __init__(
-        self, base_url, model, key, deadline, *, direct=False, allowed_models=(), retries=0
+        self,
+        base_url,
+        model,
+        key,
+        deadline,
+        *,
+        direct=False,
+        allowed_models=(),
+        retries=0,
+        strict_context=False,
+        context_length=None,
+        on_context_len=None,
     ):
         self.url = base_url.rstrip("/")
         self.model = model
@@ -65,6 +114,10 @@ class ChatEndpoint:
         self.direct = direct
         self.allowed_models = allowed_models
         self.retries = retries
+        self.strict_context = strict_context
+        self.context_length = context_length
+        self.on_context_len = on_context_len
+        self.tokenize_supported = True
         self.chat_calls = 0
         self.chat_seconds = 0.0
 
@@ -152,17 +205,45 @@ class ChatEndpoint:
         return reply
 
     def count(self, messages):
-        info = self.post(
-            self.url.removesuffix("/v1") + "/tokenize",
-            dict(
-                model=self.model,
-                messages=messages,
-                chat_template_kwargs={"enable_thinking": True, "preserve_thinking": True},
-            ),
-        )
-        if info["max_model_len"] != 262144:
-            raise ValueError("executor context differs from the pinned serving profile")
-        return info["count"]
+        if not self.tokenize_supported:
+            return estimate_tokens(messages)
+        try:
+            info = self.post(
+                self.url.removesuffix("/v1") + "/tokenize",
+                dict(
+                    model=self.model,
+                    messages=messages,
+                    chat_template_kwargs={"enable_thinking": True, "preserve_thinking": True},
+                ),
+            )
+        except RuntimeError as exc:
+            msg = str(exc)
+            if not self.strict_context and any(
+                code in msg for code in ("HTTP 404", "HTTP 405", "HTTP 501")
+            ):
+                self.tokenize_supported = False
+                logging.getLogger(__name__).warning(
+                    "Executor %s has no /tokenize endpoint (%s); using local token estimate",
+                    self.model,
+                    msg,
+                )
+                return estimate_tokens(messages)
+            raise
+        if not isinstance(info, dict) or "count" not in info:
+            if self.strict_context:
+                raise ValueError("executor /tokenize returned an unexpected payload")
+            self.tokenize_supported = False
+            return estimate_tokens(messages)
+        reported = info.get("max_model_len")
+        if reported is not None:
+            reported = int(reported)
+            if self.strict_context and reported != DEFAULT_MAX_MODEL_LEN:
+                raise ValueError("executor context differs from the pinned serving profile")
+            if reported != self.context_length:
+                self.context_length = reported
+                if self.on_context_len is not None:
+                    self.on_context_len(reported)
+        return int(info["count"])
 
 
 class RelayedUpper(ChatEndpoint):
@@ -209,10 +290,20 @@ def upper_endpoint(boyue_config, deadline):
 
 
 class ExecutorPolicy:
-    def __init__(self, endpoint, seed, recover_length=False):
+    def __init__(
+        self,
+        endpoint,
+        seed,
+        recover_length=False,
+        *,
+        max_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
+        api_style="vllm",
+    ):
         self.endpoint = endpoint
         self.seed = seed
         self.recover_length = recover_length
+        self.max_tokens = max_tokens
+        self.api_style = api_style
         self.recover_next = False
 
     def __call__(self, messages):
@@ -226,20 +317,23 @@ class ExecutorPolicy:
                     "Use the current observation and return exactly one valid action JSON.",
                 },
             ]
-        reply = self.endpoint.chat(
-            messages,
+        options = dict(
             seed=self.seed,
             temperature=0.8,
             top_p=0.95,
-            top_k=20,
-            repetition_penalty=1.08,
             presence_penalty=0,
-            max_tokens=16384,
-            chat_template_kwargs={
-                "enable_thinking": not recovery,
-                "preserve_thinking": not recovery,
-            },
+            max_tokens=self.max_tokens,
         )
+        if self.api_style != "openai":
+            options.update(
+                top_k=20,
+                repetition_penalty=1.08,
+                chat_template_kwargs={
+                    "enable_thinking": not recovery,
+                    "preserve_thinking": not recovery,
+                },
+            )
+        reply = self.endpoint.chat(messages, **options)
         self.seed += 1
         self.recover_next = (
             self.recover_length
@@ -274,6 +368,13 @@ def main():
     for feature in ("rewrite", "retrieve", "clarify"):
         p.add_argument("--" + feature, action=argparse.BooleanOptionalAction)
     p.add_argument("--demo-library", type=Path)
+    p.add_argument("--skills-dir", type=Path, help="directory of read-only Markdown skill cards")
+    p.add_argument(
+        "--skill",
+        action="append",
+        default=[],
+        help="repeatable read-only skill card ID to attach from --skills-dir",
+    )
     p.add_argument("--max-attempts", type=int, default=2)
     p.add_argument("--interactive", action="store_true", help="read clarification answers on stdin")
     p.add_argument("--gate", type=int, metavar="PORT", help="local browser handoff (0: free port)")
@@ -299,6 +400,16 @@ def main():
     )
     p.add_argument("--libero-source-root", type=Path, default=os.environ.get("ETA0_LIBERO_ROOT"))
     p.add_argument(
+        "--strict-serving-profile",
+        action="store_true",
+        help="require vLLM /tokenize and max_model_len == 262144 for pinned benchmark runs",
+    )
+    p.add_argument(
+        "--max-model-len",
+        type=int,
+        help="override executor context length (defaults to client.json or /tokenize)",
+    )
+    p.add_argument(
         "--upstream-base",
         action="store_true",
         help="use the frozen upstream module in the paired evaluation bundle",
@@ -319,11 +430,15 @@ def main():
     if args.mode != "request" and (
         any(getattr(args, r) is not None for r in ("rewrite", "retrieve", "clarify"))
         or args.demo_library
+        or args.skills_dir
+        or args.skill
         or args.gate is not None
         or args.interactive
         or args.max_attempts != 2
     ):
         p.error("request features require --mode request")
+    if args.skill and not args.skills_dir:
+        p.error("--skill requires --skills-dir")
     if args.gate is not None and (args.interactive or not 0 <= args.gate <= 65535):
         p.error("--gate requires port 0–65535 and owns the interactive handoff")
     if args.max_attempts < 1:
@@ -358,8 +473,46 @@ def main():
         progress_access = "on_request" if completion_enabled else "hidden"
     budget = EpisodeBudget(args.wall_seconds, args.upper_wall_seconds)
     config = json.loads(args.executor_client.read_text())
+    api_style = config.get("api_style", "vllm")
+    strict_profile = args.strict_serving_profile or bool(config.get("strict_serving_profile"))
+    initial_context_len = (
+        args.max_model_len
+        if args.max_model_len is not None
+        else int(config.get("max_model_len", DEFAULT_MAX_MODEL_LEN))
+    )
+    requested_output = int(config.get("max_output_tokens", DEFAULT_MAX_OUTPUT_TOKENS))
+    ctx_len, max_out, compact_threshold = adaptive_context_budget(
+        initial_context_len, requested_output
+    )
+    serving_state = dict(
+        max_model_len=ctx_len,
+        max_output_tokens=max_out,
+        threshold=compact_threshold,
+        compactor=None,
+        policy=None,
+    )
+
+    def sync_context_len(reported_len):
+        new_len, new_out, new_threshold = adaptive_context_budget(reported_len, requested_output)
+        serving_state.update(
+            max_model_len=new_len, max_output_tokens=new_out, threshold=new_threshold
+        )
+        if serving_state["compactor"] is not None:
+            serving_state["compactor"].update_limits(
+                max_model_len=new_len, max_output_tokens=new_out, threshold=new_threshold
+            )
+        if serving_state["policy"] is not None:
+            serving_state["policy"].max_tokens = new_out
+
     lower = ChatEndpoint(
-        config["base_url"], config["model"], config["api_key"], budget.lower_deadline, direct=True
+        config["base_url"],
+        config["model"],
+        config["api_key"],
+        budget.lower_deadline,
+        direct=True,
+        strict_context=strict_profile,
+        context_length=initial_context_len,
+        on_context_len=sync_context_len,
     )
     # The pinned adapter loads its simulator and PhysLM dependencies in this interpreter.
     args.output.mkdir(parents=True, exist_ok=False)
@@ -437,6 +590,8 @@ def main():
                         clarify=clarify,
                         max_attempts=args.max_attempts,
                         gui_gate=args.gate is not None,
+                        skills_dir=str(args.skills_dir) if args.skills_dir else None,
+                        skill_ids=list(args.skill),
                     )
                     if args.mode == "request"
                     else None,
@@ -453,16 +608,32 @@ def main():
                 stream.write(json.dumps(event) + "\n")
 
         def new_compactor():
-            return HistoryCompactor(
+            def summarize(messages, attempt, schema):
+                opts = dict(max_tokens=min(4096, serving_state["max_output_tokens"]))
+                if api_style != "openai":
+                    opts["chat_template_kwargs"] = {"enable_thinking": False}
+                return lower.chat(messages, **opts)
+
+            compactor = HistoryCompactor(
                 task=task,
                 count_tokens=lower.count,
                 record=record,
-                summarize=lambda messages, attempt, schema: lower.chat(
-                    messages, max_tokens=4096, chat_template_kwargs={"enable_thinking": False}
-                ),
+                summarize=summarize,
+                threshold=serving_state["threshold"],
+                max_model_len=serving_state["max_model_len"],
+                max_output_tokens=serving_state["max_output_tokens"],
             )
+            serving_state["compactor"] = compactor
+            return compactor
 
-        execute = ExecutorPolicy(lower, args.seed, args.recover_length)
+        execute = ExecutorPolicy(
+            lower,
+            args.seed,
+            args.recover_length,
+            max_tokens=serving_state["max_output_tokens"],
+            api_style=api_style,
+        )
+        serving_state["policy"] = execute
         prompt = ACTION_PROMPT.replace(
             "40 motion segments and 120 model calls",
             f"{args.max_actions} motion segments and {args.max_calls} model calls",
@@ -495,8 +666,13 @@ def main():
             def attempt(path, current, observation, context, number):
                 lower.deadline = current.lower_deadline
                 policy = ExecutorPolicy(
-                    lower, args.seed + (number - 1) * args.max_calls, args.recover_length
+                    lower,
+                    args.seed + (number - 1) * args.max_calls,
+                    args.recover_length,
+                    max_tokens=serving_state["max_output_tokens"],
+                    api_style=api_style,
                 )
+                serving_state["policy"] = policy
                 return run(
                     adapter,
                     policy,
@@ -512,6 +688,8 @@ def main():
                     attempt_context=context,
                     budget=current,
                     progress_access=progress_access,
+                    on_observation=gate.observe_live if gate else None,
+                    should_stop=gate.stop_requested if gate else None,
                 )
 
             request_dir = args.output / "rollout"
@@ -520,6 +698,11 @@ def main():
                 from eta0_gate import RequestGate
 
                 gate = RequestGate(args.gate, native_goal)
+            skills_lib = None
+            if args.skills_dir is not None:
+                from skill_cards import SkillLibrary
+
+                skills_lib = SkillLibrary(args.skills_dir)
             try:
                 result = run_request(
                     adapter,
@@ -532,6 +715,8 @@ def main():
                     clarify=clarify,
                     ask=ask if args.interactive else None,
                     library=DemoLibrary(args.demo_library) if retrieve else None,
+                    skills=skills_lib,
+                    skill_ids=args.skill,
                     max_attempts=args.max_attempts,
                     gate=gate,
                     wall_seconds=args.wall_seconds,
@@ -544,7 +729,9 @@ def main():
                     upper_calls=upper.chat_calls if upper else 0,
                     episode_wall_s=time.monotonic() - budget.start,
                 )
-                (request_dir / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
+                (request_dir / "RESULT.json").write_text(
+                    json.dumps(result, indent=2, ensure_ascii=False) + "\n"
+                )
                 if gate:
                     gate.finish(result, (request_dir / "RESULT.json").resolve())
             except Exception as exc:
@@ -591,7 +778,9 @@ def main():
         result.update(
             budget.metrics(), lower_chat_calls=lower.chat_calls, lower_chat_s=lower.chat_seconds
         )
-        (args.output / "rollout/RESULT.json").write_text(json.dumps(result, indent=2) + "\n")
+        (args.output / "rollout/RESULT.json").write_text(
+            json.dumps(result, indent=2, ensure_ascii=False) + "\n"
+        )
         print(json.dumps(result, ensure_ascii=False))
     finally:
         (args.output / "cleanup.json").write_text(json.dumps(bounded_cleanup(adapter.close)))

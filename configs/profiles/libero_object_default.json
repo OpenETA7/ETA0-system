@@ -1,0 +1,12 @@
+{
+  "id": "libero_object_default",
+  "description": "Default LIBERO-Object tabletop pick-and-place request profile with read-only pick-place skill card.",
+  "suite": "libero_object",
+  "task": 0,
+  "initial_index": 5,
+  "max_attempts": 2,
+  "skills_dir": "skills",
+  "skill_ids": [
+    "pick-place"
+  ]
+}

@@ -1,25 +1,302 @@
 <!doctype html>
 <html lang="zh-CN">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETA0 · 任务交接</title>
-<link rel="stylesheet" href="/gate.css">
-<header><div class="wrap top"><strong><i aria-hidden="true">↗</i> ETA0</strong><span>机器人工作台</span><span id="phase" role="status">正在连接</span></div></header>
-<main class="wrap">
-<h1>任务交接</h1>
-<p id="notice" role="status"></p>
-<div class="layout">
-<section class="scene"><div class="title"><h2>当前场景</h2><span>准备阶段采集</span></div>
-<div class="views"><figure><img id="external" alt="外部相机拍摄的操作台"><figcaption>外部视角</figcaption></figure><figure><img id="wrist" alt="腕部相机拍摄的夹爪视野"><figcaption>腕部视角</figcaption></figure></div>
-<div class="native"><h3>环境验证目标</h3><p id="benchmark"></p></div></section>
-<section class="handoff"><h2>执行交接</h2><h3>用户原话</h3><p id="goal"></p>
-<p id="dialogue" hidden></p>
-<form id="questionForm" hidden><label for="answer" id="question"></label><textarea id="answer" maxlength="1500" required></textarea><button>提交回答</button></form>
-<form id="reviewForm" hidden><div class="row"><label for="instruction">交给 27B 的指令</label><button type="button" id="restore" class="link">使用原话</button></div><textarea id="instruction" maxlength="1500" required></textarea>
-<div id="demoBlock" hidden><h3>成功轨迹示例</h3><div class="example"><img id="preview" alt="所选历史示例的动作前画面"><p id="demoGoal"></p></div><label class="check"><input type="checkbox" id="keep" checked> 使用此示例</label></div>
-<button>开始执行 <b aria-hidden="true">↗</b></button></form>
-<button id="cancel" class="link cancel" hidden>取消请求</button>
-<div id="receipt" hidden><h3>执行结果</h3><p id="outcome"></p><h3>回执位置</h3><code id="path"></code></div>
-</section></div></main>
-<script src="/gate.js"></script>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ETA0 · 任务交接工作台</title>
+  <link rel="stylesheet" href="/gate.css">
+</head>
+<body data-phase="preparing">
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 19L19 5"/>
+            <path d="M9 5h10v10"/>
+            <circle cx="6.5" cy="17.5" r="2.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <div class="brand-copy">
+          <strong>ETA0</strong>
+          <span class="brand-tag">任务交接</span>
+        </div>
+      </div>
+
+      <nav class="stepper" aria-label="请求阶段">
+        <ol class="step-list">
+          <li class="step" data-step="preparing"><span class="step-dot">1</span><span class="step-label">场景采集</span></li>
+          <li class="step" data-step="question"><span class="step-dot">2</span><span class="step-label">意图澄清</span></li>
+          <li class="step" data-step="review"><span class="step-dot">3</span><span class="step-label">交接审阅</span></li>
+          <li class="step" data-step="running"><span class="step-dot">4</span><span class="step-label">自主执行</span></li>
+          <li class="step" data-step="finished"><span class="step-dot">5</span><span class="step-label">原生验收</span></li>
+        </ol>
+      </nav>
+
+      <div class="status-pill" role="status" aria-live="polite">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        <span id="phase">正在连接</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap workspace">
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <div class="layout">
+      <section class="panel scene-panel" aria-labelledby="sceneHeading">
+        <div class="panel-head">
+          <div>
+            <h1 id="sceneHeading">当前观察场景</h1>
+            <p class="panel-sub">准备阶段双视角采集 · 点击任意画面放大检视</p>
+          </div>
+          <span class="chip chip-muted" id="captureBadge">等待采集</span>
+        </div>
+
+        <div class="views">
+          <figure class="viewport" data-loading="true" id="externalBox">
+            <button type="button" class="zoom-trigger" data-zoom="external" aria-label="放大外部相机画面">
+              <img id="external" alt="外部相机拍摄的操作台">
+              <span class="skeleton" aria-hidden="true"></span>
+              <span class="reticle reticle-tl" aria-hidden="true"></span>
+              <span class="reticle reticle-br" aria-hidden="true"></span>
+              <figcaption>
+                <span class="cam-id">CAM-01</span>
+                <span>外部全局视角</span>
+              </figcaption>
+              <span class="zoom-hint" aria-hidden="true">放大</span>
+            </button>
+          </figure>
+
+          <figure class="viewport" data-loading="true" id="wristBox">
+            <button type="button" class="zoom-trigger" data-zoom="wrist" aria-label="放大腕部相机画面">
+              <img id="wrist" alt="腕部相机拍摄的夹爪视野">
+              <span class="skeleton" aria-hidden="true"></span>
+              <span class="reticle reticle-tl" aria-hidden="true"></span>
+              <span class="reticle reticle-br" aria-hidden="true"></span>
+              <figcaption>
+                <span class="cam-id">CAM-02</span>
+                <span>腕部夹爪视角</span>
+              </figcaption>
+              <span class="zoom-hint" aria-hidden="true">放大</span>
+            </button>
+          </figure>
+        </div>
+
+        <div class="telemetry-strip" id="telemetry" hidden>
+          <div class="tele-item" id="teleObsWrap" hidden>
+            <span class="tele-k">观测编号</span>
+            <code class="tele-v" id="teleObs"></code>
+          </div>
+          <div class="tele-item" id="teleFrameWrap" hidden>
+            <span class="tele-k">参考坐标系</span>
+            <code class="tele-v" id="teleFrame"></code>
+          </div>
+          <div class="tele-item" id="teleGripperWrap" hidden>
+            <span class="tele-k">夹爪开度</span>
+            <code class="tele-v" id="teleGripper"></code>
+          </div>
+        </div>
+
+        <div class="native-card">
+          <div class="section-label">
+            <span>环境验证目标</span>
+            <span class="label-hint">Native Ground Truth</span>
+          </div>
+          <p id="benchmark" class="native-goal"></p>
+        </div>
+      </section>
+
+      <section class="panel handoff-panel" aria-labelledby="handoffHeading">
+        <div class="panel-head">
+          <div>
+            <h2 id="handoffHeading">执行交接</h2>
+            <p class="panel-sub">首轮动作前的人机确认与状态回执</p>
+          </div>
+        </div>
+
+        <div class="goal-card">
+          <div class="section-label">
+            <span>用户原话</span>
+            <span class="label-hint">Original Request</span>
+          </div>
+          <p id="goal" class="goal-text">正在等待请求内容…</p>
+        </div>
+
+        <div id="dialogueWrap" class="dialogue-wrap" hidden>
+          <div class="section-label">
+            <span>澄清对话记录</span>
+            <span class="label-hint" id="dialogueCount"></span>
+          </div>
+          <div id="dialogue" class="dialogue-list"></div>
+        </div>
+
+        <div id="preparingPanel" class="state-card preparing-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <div>
+            <h3 id="preparingTitle">正在准备交接方案</h3>
+            <p id="preparingDesc">正在采集双相机画面，并等待上层视觉模型分析任务目标与可用示例。</p>
+          </div>
+        </div>
+
+        <form id="questionForm" class="stage-form" hidden>
+          <div class="question-callout">
+            <span class="callout-badge">需要澄清</span>
+            <label for="answer" id="question" class="question-text"></label>
+          </div>
+          <div class="field-meta">
+            <span>请补充您的具体意图</span>
+            <span id="answerCount" class="char-count">0 / 1500</span>
+          </div>
+          <textarea id="answer" maxlength="1500" rows="4" placeholder="例如：靠左边的银白色饮料罐，放到托盘里…" required></textarea>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="answerSubmit">
+              <span>提交回答</span>
+              <span class="kbd" aria-hidden="true">⌘↵</span>
+            </button>
+          </div>
+        </form>
+
+        <form id="reviewForm" class="stage-form" hidden>
+          <div class="editor-head">
+            <div class="editor-title">
+              <label for="instruction">交给 27B 的执行指令</label>
+              <span id="diffBadge" class="chip chip-neutral">与原话一致</span>
+            </div>
+            <div class="quick-actions">
+              <button type="button" id="restoreProposed" class="btn-ghost" hidden>恢复上层建议</button>
+              <button type="button" id="restore" class="btn-ghost">使用原话</button>
+            </div>
+          </div>
+
+          <textarea id="instruction" maxlength="1500" rows="5" required></textarea>
+          <div class="field-meta">
+            <span>确认后将冻结本轮执行输入</span>
+            <span id="instructionCount" class="char-count">0 / 1500</span>
+          </div>
+
+          <div id="demoBlock" class="demo-card" hidden>
+            <div class="demo-head">
+              <div>
+                <span class="demo-title">检索到的成功轨迹示例</span>
+                <code id="demoId" class="demo-id"></code>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="keep" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span class="switch-label" id="keepLabel">附带此示例</span>
+              </label>
+            </div>
+            <div class="demo-body">
+              <button type="button" class="demo-thumb-btn" id="demoPreviewBtn" aria-label="放大历史示例画面" hidden>
+                <img id="preview" alt="所选历史示例的动作前画面">
+              </button>
+              <div class="demo-info">
+                <p id="demoGoal" class="demo-goal"></p>
+                <div id="demoMeta" class="demo-meta"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="startSubmit">
+              <span>批准并开始执行</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14"/>
+                <path d="m12 5 7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </form>
+
+        <div id="runningPanel" class="state-card running-card" hidden>
+          <div class="running-head">
+            <div class="running-badge">
+              <span class="pulse-dot" aria-hidden="true"></span>
+              <span id="runningAttempt">第 1 轮自主执行中</span>
+            </div>
+            <code id="elapsedTimer" class="elapsed-timer">00:00</code>
+          </div>
+          <div class="progress-track" aria-hidden="true"><div class="progress-bar"></div></div>
+          <div class="live-counters">
+            <div class="live-stat">
+              <span class="live-k">已执行动作</span>
+              <strong class="live-v" id="liveActions">0</strong>
+            </div>
+            <div class="live-stat">
+              <span class="live-k">模型调用</span>
+              <strong class="live-v" id="liveCalls">0</strong>
+            </div>
+          </div>
+          <div class="frozen-brief">
+            <span class="section-label-sm">本轮已冻结的执行指令</span>
+            <p id="runningInstruction"></p>
+            <div class="running-tags">
+              <span class="chip chip-teal" id="runningDemoTag">零示例执行</span>
+              <span class="chip chip-muted">27B 自主闭环观察与控制</span>
+            </div>
+          </div>
+          <div class="running-footer">
+            <button type="button" id="stopRun" class="btn-danger-outline">安全停止执行</button>
+          </div>
+        </div>
+
+        <div id="receipt" class="receipt-panel" hidden>
+          <div id="verdictBanner" class="verdict-banner" data-tone="neutral">
+            <div class="verdict-icon" id="verdictIcon" aria-hidden="true"></div>
+            <div>
+              <h3 id="outcome">执行结果</h3>
+              <p id="outcomeDetail" class="verdict-sub"></p>
+            </div>
+          </div>
+
+          <div class="metrics-grid" id="metricsGrid">
+            <div class="metric">
+              <span class="metric-k">执行轮次</span>
+              <strong class="metric-v" id="metricAttempts">-</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-k">物理动作</span>
+              <strong class="metric-v" id="metricActions">-</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-k">模型调用</span>
+              <strong class="metric-v" id="metricCalls">-</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-k">请求耗时</span>
+              <strong class="metric-v" id="metricTime">-</strong>
+            </div>
+          </div>
+
+          <div class="receipt-box">
+            <div class="section-label">
+              <span>回执位置</span>
+              <button type="button" id="copyPath" class="btn-ghost">复制路径</button>
+            </div>
+            <code id="path" class="receipt-path"></code>
+          </div>
+        </div>
+
+        <div id="cancelWrap" class="cancel-wrap" hidden>
+          <button type="button" id="cancel" class="btn-danger-ghost">取消本次请求</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxCaption" hidden>
+    <div class="lightbox-card">
+      <div class="lightbox-head">
+        <span id="lightboxCaption">画面预览</span>
+        <button type="button" id="lightboxClose" class="btn-ghost lightbox-close">关闭 (ESC)</button>
+      </div>
+      <div class="lightbox-stage">
+        <img id="lightboxImg" alt="放大检视的相机画面">
+      </div>
+    </div>
+  </div>
+
+  <script src="/gate.js"></script>
+</body>
 </html>

@@ -20,12 +20,12 @@ simulation = ["mujoco==2.3.7", "robosuite==1.4.1", "numpy==1.23.5", "scipy==1.10
 dev = ["pytest>=8", "ruff>=0.9"]
 
 [tool.setuptools.package-data]
-eta0_sim = ["actions.txt"]
+eta0_sim = ["actions.txt", "libero_catalog.json"]
 eta0_gate = ["*.html", "*.css", "*.js"]
 
 [tool.setuptools]
 packages = ["eta0_sim", "eta0_gate"]
-py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "executor_led", "libero_semantics", "request_harness", "preparation_relay", "eta0_run", "rollout_libero_minimal"]
+py-modules = ["harness", "tcp_overlay", "tcp_overlay_adapter", "visual_query", "rollout_context", "hierarchy", "executor_led", "libero_semantics", "request_harness", "preparation_relay", "skill_cards", "eta0_run", "rollout_libero_minimal"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

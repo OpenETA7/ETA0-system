@@ -187,6 +187,41 @@ def memory_schema(task, allowed_ids):
     )
 
 
+def strip_historical_examples(messages):
+    """Exclude historical demo examples from summary prefixes without altering inference wire."""
+    cleaned = []
+    for message in messages:
+        content = message.get("content")
+        if message.get("role") != "user" or not isinstance(content, list):
+            cleaned.append(message)
+            continue
+        kept = []
+        skip_next_image = False
+        for part in content:
+            if skip_next_image:
+                skip_next_image = False
+                if part.get("type") == "image_url":
+                    continue
+            if part.get("type") == "text":
+                raw = part.get("text", "")
+                if raw.startswith("Historical external frame before action "):
+                    skip_next_image = True
+                    continue
+                try:
+                    parsed = json.loads(raw)
+                except (ValueError, TypeError):
+                    parsed = None
+                if isinstance(parsed, dict) and (
+                    "historical_success_example" in parsed
+                    or parsed.get("kind") == "read_only_skill_guidance"
+                ):
+                    continue
+            kept.append(part)
+        if kept:
+            cleaned.append(dict(message, content=kept))
+    return cleaned
+
+
 def observation_ids(messages):
     ids = []
     for message in messages:
@@ -309,6 +344,17 @@ class HistoryCompactor:
         self.stripped_reasoning_indices = set()
         self.compactions = 0
         self.last_input_tokens = None
+
+    def update_limits(self, *, max_model_len, max_output_tokens, threshold):
+        if (
+            threshold < 1
+            or max_output_tokens < 1
+            or threshold + max_output_tokens + 2048 > max_model_len
+        ):
+            raise ValueError("compact threshold must leave output and safety headroom")
+        self.max_model_len = max_model_len
+        self.max_output_tokens = max_output_tokens
+        self.threshold = threshold
 
     def compose(
         self,
@@ -485,7 +531,7 @@ class HistoryCompactor:
         system = SUMMARY_SYSTEM if schema is not None else TEXT_SUMMARY_SYSTEM
         request = (
             [dict(role="system", content=system), source]
-            + prefix[1:]
+            + strip_historical_examples(prefix[1:])
             + [dict(role="user", content=instruction)]
         )
         if self.count(request) + self.max_output_tokens > self.max_model_len:

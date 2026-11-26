@@ -15,6 +15,91 @@ from hierarchy import phrase
 RETRYABLE = {"wall_time_budget", "call_budget", "action_budget"}
 PREPARATION_RETRIES = 4
 PROTOCOL = "libero-osc-two-view-v1"
+STOPWORDS = {
+    "the",
+    "a",
+    "an",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "and",
+    "with",
+    "for",
+    "from",
+    "into",
+    "onto",
+    "please",
+}
+ZH_EN_ALIASES = {
+    "抽屉": ("drawer",),
+    "柜": ("cabinet",),
+    "中间": ("middle",),
+    "顶": ("top",),
+    "最上": ("top",),
+    "底": ("bottom",),
+    "最下": ("bottom",),
+    "碗": ("bowl",),
+    "杯": ("mug", "cup"),
+    "盘": ("plate",),
+    "炉": ("stove",),
+    "摩卡壶": ("moka", "pot"),
+    "壶": ("pot", "moka"),
+    "微波炉": ("microwave",),
+    "篮": ("basket",),
+    "打开": ("open",),
+    "关": ("close",),
+    "放": ("put", "place"),
+    "拿": ("pick",),
+    "抓": ("pick",),
+    "捡": ("pick",),
+    "黄油": ("butter",),
+    "汤": ("soup",),
+    "番茄": ("tomato", "ketchup"),
+    "奶酪": ("cheese",),
+    "牛奶": ("milk",),
+    "橙汁": ("orange", "juice"),
+    "巧克力": ("chocolate",),
+    "布丁": ("pudding",),
+    "酒": ("wine",),
+    "书": ("book",),
+    "架": ("rack", "caddy"),
+    "盒": ("box",),
+    "左": ("left",),
+    "右": ("right",),
+    "黑": ("black",),
+    "白": ("white",),
+    "红": ("red",),
+    "黄": ("yellow",),
+}
+
+
+def _goal_terms(text_value):
+    lowered = text_value.casefold()
+    terms = {w for w in re.findall(r"[a-z0-9]+", lowered) if w not in STOPWORDS}
+    for zh, en_words in ZH_EN_ALIASES.items():
+        if zh in lowered:
+            terms.update(en_words)
+    return terms
+
+
+def _stratified_sample(rows, limit=8):
+    buckets = {}
+    for row in sorted(rows, key=lambda r: r["id"]):
+        suite = row.get("suite") or row["id"].split("-", 1)[0]
+        buckets.setdefault(suite, []).append(row)
+    selected = []
+    keys = sorted(buckets)
+    while len(selected) < limit and keys:
+        next_keys = []
+        for k in keys:
+            if buckets[k] and len(selected) < limit:
+                selected.append(buckets[k].pop(0))
+            if buckets[k]:
+                next_keys.append(k)
+        keys = next_keys
+    return selected
 BRIEF = """Prepare one complete robot task before an autonomous attempt. The original user goal
 and the user's actual clarifications are authoritative. Preserve the object identity, relations,
 ordering and end state. Only add visible distinguishing cues. Maintain the user's language.
@@ -59,14 +144,23 @@ class DemoLibrary:
             self.entries[key] = row
 
     def candidates(self, goal, state_hash):
-        words = set(re.findall(r"\w+", goal.casefold()))
+        words = _goal_terms(goal)
         rows = [r for r in self.entries.values() if r["initial_state_sha256"] != state_hash]
+        if not rows:
+            return []
 
-        def score(row):
-            terms = set(re.findall(r"\w+", row["goal"].casefold()))
-            return (-len(words & terms) / max(1, len(words | terms)), row["id"])
+        def overlap(row):
+            terms = _goal_terms(row["goal"])
+            if not words or not terms:
+                return 0.0
+            return len(words & terms) / max(1, len(words | terms))
 
-        return [{k: r[k] for k in ("id", "goal", "segments")} for r in sorted(rows, key=score)[:8]]
+        scored = [(overlap(r), r) for r in rows]
+        if max(s for s, _ in scored) <= 0.0:
+            picked = _stratified_sample(rows, limit=8)
+        else:
+            picked = [r for _, r in sorted(scored, key=lambda item: (-item[0], item[1]["id"]))[:8]]
+        return [{k: r[k] for k in ("id", "goal", "segments")} for r in picked]
 
     def example(self, key):
         from PIL import Image
@@ -79,6 +173,11 @@ class DemoLibrary:
                     "recorded_segments": row["segments"],
                     "source_id": key,
                     "outcome": "native_success",
+                    "limits": (
+                        "Compare manipulation pattern and visible appearance only; this is a "
+                        "historical scene and supplies no current coordinates, pose, contact, "
+                        "or task completion."
+                    ),
                 }
             )
         ]
@@ -111,7 +210,9 @@ class PreparationFallback(Exception):
     """The executor can continue from the original goal and confirmed answers."""
 
 
-def parse_preparation(response, fields, candidates, clarify, log, retry):
+def parse_preparation(
+    response, fields, candidates, clarify, log, retry, *, skill_candidates=()
+):
     try:
         choice = response["choices"][0]
         reason = choice["finish_reason"]
@@ -144,6 +245,8 @@ def parse_preparation(response, fields, candidates, clarify, log, retry):
             data["instruction"] = phrase(data["instruction"])
         if data.get("demo_id") is not None and data["demo_id"] not in candidates:
             raise ValueError("unknown demo id")
+        if data.get("skill_id") is not None and data["skill_id"] not in skill_candidates:
+            raise ValueError("unknown skill id")
     except (ValueError, IndexError):
         raise InvalidPreparation("invalid_payload") from None
     return data
@@ -165,12 +268,15 @@ def prepare(
     budget,
     log,
     frame_dir=None,
+    skill_candidates=(),
 ):
     fields = {}
     if rewrite:
         fields["instruction"] = "one complete grounded goal"
     if retrieve:
         fields["demo_id"] = "a listed id, or null"
+    if skill_candidates:
+        fields["skill_id"] = "a listed read-only skill id, or null"
     prompt = BRIEF + "\nReturn an object with exactly these fields: " + json.dumps(fields)
     if clarify:
         prompt += (
@@ -186,6 +292,7 @@ def prepare(
         image_url(observation.wrist_rgb, frame_dir / "wrist.jpg" if frame_dir else None),
     ]
     candidate_ids = [r["id"] for r in candidates]
+    skill_candidate_ids = [r["id"] for r in skill_candidates]
     while True:
         payload = dict(
             original_goal=goal,
@@ -194,6 +301,8 @@ def prepare(
             candidates=candidates,
             reference_frame=observation.robot.reference_frame,
         )
+        if skill_candidates:
+            payload["skill_cards"] = skill_candidates
         if previous:
             payload["latest_public_completion"] = receipt
             payload["latest_measured_state"] = observation.state
@@ -204,7 +313,15 @@ def prepare(
             try:
                 with budget.upper_interval():
                     response = chat(messages, deadline=budget.upper_deadline, max_tokens=max_tokens)
-                    data = parse_preparation(response, fields, candidate_ids, clarify, log, retry)
+                    data = parse_preparation(
+                        response,
+                        fields,
+                        candidate_ids,
+                        clarify,
+                        log,
+                        retry,
+                        skill_candidates=skill_candidate_ids,
+                    )
                 break
             except (InvalidPreparation, json.JSONDecodeError, UnicodeDecodeError) as exc:
                 cause = str(exc) if isinstance(exc, InvalidPreparation) else "invalid_response_json"
@@ -219,14 +336,14 @@ def prepare(
             question = data["question"]
             log("clarification_question", question=question)
             if ask is None or len(dialogue) >= 2:
-                return None, None, question
+                return None, None, question, None
             answer = ask(question)
             if not answer or not answer.strip():
-                return None, None, question
+                return None, None, question, None
             dialogue.append(dict(question=question, answer=phrase(answer)))
             log("clarification_answer", **dialogue[-1])
             continue
-        return data.get("instruction", goal), data.get("demo_id"), None
+        return data.get("instruction", goal), data.get("demo_id"), None, data.get("skill_id")
 
 
 def run_request(
@@ -241,6 +358,8 @@ def run_request(
     clarify=False,
     ask=None,
     library=None,
+    skills=None,
+    skill_ids=(),
     max_attempts=2,
     wall_seconds=2700,
     upper_seconds=900,
@@ -254,6 +373,11 @@ def run_request(
         raise ValueError("upper endpoint required for enabled features")
     if retrieve and library is None:
         raise ValueError("retrieval requires a verified library")
+    pinned_skills = list(dict.fromkeys(skill_ids))
+    if pinned_skills and skills is None:
+        raise ValueError("skill_ids require a verified SkillLibrary")
+    for sid in pinned_skills:
+        skills.get(sid)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
@@ -288,26 +412,36 @@ def run_request(
         if adapter.success():
             reason = "native_success"
             break
+        if gate and callable(getattr(gate, "stop_requested", None)) and gate.stop_requested():
+            reason = "user_stopped"
+            break
         budget = EpisodeBudget(wall_seconds, max(0.0, upper_seconds - upper_s))
         obs = adapter.observe()
         if number == 1:
             initial_view = hashlib.sha256(obs.external_rgb.convert("RGB").tobytes()).hexdigest()
         if gate and number == 1:
             gate.scene(obs, goal)
-        instruction, demo_id = goal, None
+        instruction, demo_id, selected_skill = goal, None, None
         may_ask = clarify and number == 1
         may_rewrite = rewrite and fixed_instruction is None
         may_retrieve = retrieve and not remove_demo
-        if may_rewrite or may_retrieve or may_ask:
+        may_select_skill = skills is not None and not pinned_skills and chat is not None
+        if may_rewrite or may_retrieve or may_ask or may_select_skill:
             candidates = (
                 library.candidates(goal, adapter.meta.get("initial_state_sha256"))
                 if may_retrieve
                 else []
             )
-            log("preparation_started", attempt=number, candidates=[r["id"] for r in candidates])
+            skill_candidates = skills.catalog() if may_select_skill else []
+            log(
+                "preparation_started",
+                attempt=number,
+                candidates=[r["id"] for r in candidates],
+                skill_candidates=[r["id"] for r in skill_candidates],
+            )
 
             try:
-                instruction, demo_id, question = prepare(
+                instruction, demo_id, question, selected_skill = prepare(
                     call_upper,
                     obs,
                     goal,
@@ -322,13 +456,14 @@ def run_request(
                     budget=budget,
                     log=log,
                     frame_dir=output / f"preparation-{number:02d}",
+                    skill_candidates=skill_candidates,
                 )
             except GateCancelled:
                 reason = "user_cancelled"
                 log(reason, attempt=number)
                 break
             except PreparationFallback as exc:
-                instruction, demo_id, question = goal, None, None
+                instruction, demo_id, question, selected_skill = goal, None, None, None
                 preparation_fallbacks += 1
                 log("preparation_fallback", attempt=number, cause=str(exc), upper_calls=upper_calls)
             except (ValueError, TypeError, KeyError, IndexError, OSError, RuntimeError) as exc:
@@ -363,10 +498,17 @@ def run_request(
             instruction = fixed_instruction
         if remove_demo:
             demo_id = None
+        active_skills = list(pinned_skills)
+        if selected_skill and selected_skill not in active_skills:
+            active_skills.append(selected_skill)
         if gate:
             gate.running(number, instruction, demo_id)
         brief = dict(
-            original_goal=goal, dialogue=dialogue, instruction=instruction, demo_id=demo_id
+            original_goal=goal,
+            dialogue=dialogue,
+            instruction=instruction,
+            demo_id=demo_id,
+            skill_ids=active_skills,
         )
         log("attempt_started", attempt=number, **brief)
         context = []
@@ -380,6 +522,8 @@ def run_request(
                     )
                 )
             )
+        if active_skills and skills is not None:
+            context.extend(skills.context_parts(active_skills))
         if demo_id:
             context.extend(library.example(demo_id))
         path = output / f"attempt-{number:02d}"
@@ -413,6 +557,7 @@ def run_request(
         elapsed_s=time.monotonic() - started,
         initial_external_rgb_sha256=initial_view,
         library_sha256=library.digest if retrieve else None,
+        skills_sha256=skills.digest if skills is not None else None,
     )
     for key in ("actions", "calls", "completion_queries"):
         result[key] = sum(a[key] for a in attempts)

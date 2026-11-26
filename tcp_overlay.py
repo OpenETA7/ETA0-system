@@ -176,9 +176,14 @@ DEFAULT_STYLE = OverlayStyle()
 
 
 def overlay_notice(camera, robot, style=DEFAULT_STYLE):
+    point_name = (
+        "configured Franka EEF reference (not the fingertip grasp center)"
+        if "configured Franka EEF" in robot.pose_origin
+        else "TCP"
+    )
     return (
         f"Robot-only overlay: origin is measured {robot.pose_origin}. Red +X, green +Y, "
-        f"blue +Z are {robot.reference_frame} directions translated to that TCP, not "
+        f"blue +Z are {robot.reference_frame} directions translated to that {point_name}, not "
         f"tool-local rotation axes. Axes are {style.axis_length_m * 100:g} cm long; "
         f"ticks are {style.tick_spacing_m * 100:g} cm apart. Projection uses this "
         f"observation's actual calibration ({camera.observation_id}). "
@@ -198,6 +203,7 @@ def render_tcp_overlay(image, camera, robot, style=DEFAULT_STYLE):
     if image.size != camera.image_size_wh:
         raise ValueError("image dimensions do not match calibration; update K after resize/crop")
     width, height = image.size
+    point_name = "EEF ref" if "configured Franka EEF" in robot.pose_origin else "TCP"
     scale = style.supersample
     canvas = image.convert("RGB").resize((width * scale, height * scale), Image.Resampling.NEAREST)
     draw = ImageDraw.Draw(canvas)
@@ -276,12 +282,34 @@ def render_tcp_overlay(image, camera, robot, style=DEFAULT_STYLE):
     if inside(tcp, depth[0]):
         line(tcp - [6, 0], tcp + [6, 0], "#ffd66b")
         line(tcp - [0, 6], tcp + [0, 6], "#ffd66b")
-        label(tcp + [9, 8], "TCP", "#ffd66b")
+        label(tcp + [9, 8], point_name, "#ffd66b")
     draw.rectangle([0, 0, width * scale - 1, 27 * scale], fill="#101319")
-    title = (f"{camera.camera_name} | {robot.reference_frame} XYZ @ TCP | "
+    title = (f"{camera.camera_name} | {robot.reference_frame} XYZ @ {point_name} | "
              f"ticks {style.tick_spacing_m * 100:g} cm")
     draw.text(xy((7, 5)), title, fill="white", font=_font(12 * scale))
     return canvas.resize((width, height), Image.Resampling.LANCZOS), _jsonable(metadata)
+
+
+def try_render_tcp_overlay(image, camera, robot, style=DEFAULT_STYLE):
+    """Render overlay when calibration is valid; fall back cleanly to raw RGB otherwise."""
+    if camera is None or robot is None:
+        return image.convert("RGB"), dict(
+            schema_version="tcp-overlay-v1",
+            status="unavailable",
+            reason="missing_calibration_or_robot_geometry",
+            notice="TCP overlay unavailable for this view; using unmodified RGB image.",
+        )
+    try:
+        rendered, metadata = render_tcp_overlay(image, camera, robot, style=style)
+        metadata["status"] = "available"
+        return rendered, metadata
+    except (ValueError, TypeError, np.linalg.LinAlgError) as exc:
+        return image.convert("RGB"), dict(
+            schema_version="tcp-overlay-v1",
+            status="unavailable",
+            reason=str(exc),
+            notice=f"TCP overlay unavailable ({exc}); using unmodified RGB image.",
+        )
 
 
 def main():

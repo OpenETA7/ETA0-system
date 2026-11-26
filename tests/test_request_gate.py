@@ -94,3 +94,111 @@ def test_cancel_before_lower_call(tmp_path, stage):
     result = demo(tmp_path / "run", gate=Cancel())
     assert result["reason"] == "user_cancelled"
     assert (result["attempts"], result["calls"], result["actions"]) == ([], 0, 0)
+
+
+def test_gate_state_includes_telemetry_dialogue_and_finish_metrics(tmp_path):
+    from examples.hierarchy_demo import TwoStageRobot
+
+    gate = RequestGate(0, "Put the bowl in the drawer")
+    base, token = gate.url.split("/#")
+    auth = {"Authorization": "Bearer " + token}
+
+    def get_state():
+        req = urllib.request.Request(base + "/state", headers=auth)
+        with urllib.request.urlopen(req, timeout=3) as response:
+            return json.loads(response.read())
+
+    def post_decision(payload):
+        req = urllib.request.Request(
+            base + "/decision",
+            json.dumps(payload).encode(),
+            {**auth, "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=3) as response:
+            return response.status
+
+    try:
+        obs = TwoStageRobot().observe()
+        obs.state["gripper_open_width_mm"] = 42.5
+        gate.scene(obs, "Put the two items away")
+        snap = get_state()
+        assert snap["observation_id"] == obs.robot.observation_id
+        assert snap["reference_frame"] == obs.robot.reference_frame
+        assert snap["gripper_open_width_mm"] == 42.5
+
+        with ThreadPoolExecutor(1) as pool:
+            q_future = pool.submit(gate.ask, "Which two items?")
+            for _ in range(40):
+                snap = get_state()
+                if snap["phase"] == "question":
+                    break
+            assert snap["phase"] == "question"
+            payload = dict(action="answer", version=snap["version"], answer="Soup & butter")
+            assert post_decision(payload) == 200
+            assert q_future.result(2) == "Soup & butter"
+            snap = get_state()
+            assert snap["dialogue"] == [
+                dict(question="Which two items?", answer="Soup & butter")
+            ]
+
+            r_future = pool.submit(
+                gate.review,
+                "Put the soup and butter into the basket.",
+                None,
+                None,
+                snap["dialogue"],
+            )
+            for _ in range(40):
+                snap = get_state()
+                if snap["phase"] == "review":
+                    break
+            assert snap["phase"] == "review"
+            assert snap["proposed_instruction"] == "Put the soup and butter into the basket."
+            assert (
+                post_decision(
+                    dict(
+                        action="start",
+                        version=snap["version"],
+                        instruction="Put the soup and butter into the basket.",
+                        keep_demo=False,
+                    )
+                )
+                == 200
+            )
+            assert r_future.result(2) == ("Put the soup and butter into the basket.", False)
+
+        gate.running(1, "Put the soup and butter into the basket.", None)
+        snap = get_state()
+        assert snap["phase"] == "running" and isinstance(snap["running_since"], float)
+
+        receipt = tmp_path / "RESULT.json"
+        with ThreadPoolExecutor(1) as pool:
+            done = pool.submit(
+                gate.finish,
+                dict(
+                    success=True,
+                    reason="native_success",
+                    calls=5,
+                    actions=2,
+                    upper_calls=2,
+                    attempts=[{"success": True}],
+                    first_attempt_success=True,
+                    elapsed_s=12.3,
+                ),
+                receipt,
+            )
+            for _ in range(40):
+                snap = get_state()
+                if snap["phase"] == "finished":
+                    break
+            done.result(3)
+        assert snap["phase"] == "finished"
+        assert (snap["attempts"], snap["actions"], snap["calls"], snap["upper_calls"]) == (
+            1,
+            2,
+            5,
+            2,
+        )
+        assert snap["receipt"] == str(receipt)
+    finally:
+        gate.close()

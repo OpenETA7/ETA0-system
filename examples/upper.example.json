@@ -1,0 +1,8 @@
+{
+  "base_url": "https://api.example.invalid/v1",
+  "model": "kimi-k3.1-pro",
+  "api_key": "REPLACE_WITH_UPPER_API_KEY",
+  "allowed_returned_models": [
+    "kimi-k3.1-pro"
+  ]
+}
