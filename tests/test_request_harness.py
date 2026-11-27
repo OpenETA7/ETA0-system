@@ -293,65 +293,6 @@ def test_upper_call_budget_retains_confirmed_answer(tmp_path):
     assert handoff["user_clarifications"] == [{"question": "Which can?", "answer": "Silver."}]
 
 
-@pytest.mark.parametrize("named", [False, True])
-def test_cloud_preview_packages_pilot_and_only_public_model_settings(tmp_path, monkeypatch, named):
-    import ast
-    import base64
-    import io
-    import zipfile
-
-    from deploy import boyue_episode
-
-    profile = tmp_path / "provider.json"
-    profile.write_text('{"boyue":{"base_url":"https://example.invalid","api_key":"fake-secret"}}')
-    if named:
-        profile.write_text(
-            json.dumps(
-                {
-                    "kimi": {
-                        "base_url": "https://example.invalid",
-                        "model": "kimi-k3",
-                        "allowed_returned_models": ["kimi-k3"],
-                        "api_key": "fake-secret",
-                    },
-                    "other": {"api_key": "other-secret"},
-                }
-            )
-        )
-    model = "kimi-k3" if named else "kimi-k3.1-pro"
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "submit",
-            *(["--config-profile", "kimi"] if named else []),
-            "--request-comparison",
-            "--config",
-            str(profile),
-            "--remote-client",
-            "/shared/client.json",
-        ],
-    )
-
-    def preview(cli, name, program, *, runner, submit, cpu_workers, priority):
-        assert priority == 5
-        assert name == "eta0-request-comparison" and runner and not submit and cpu_workers == 2
-        assert "fake-secret" not in program
-        opts = ast.literal_eval(program.splitlines()[0].removeprefix("options = "))
-        assert opts["profile"]["allowed_returned_models"] == [model]
-        assert opts["episode_args"][opts["episode_args"].index("--upper-model") + 1] == model
-        assert "other-secret" not in program
-        with zipfile.ZipFile(io.BytesIO(base64.b64decode(opts["source"]))) as bundle:
-            assert {
-                opts["entrypoint"],
-                "deploy/build_demo_library.py",
-                "request_harness.py",
-            } <= set(bundle.namelist())
-
-    monkeypatch.setattr(boyue_episode, "create_job", preview)
-    boyue_episode.main()
-
-
 def test_40_task_report_keeps_missing_cases_out_of_denominator(tmp_path):
     from deploy.request_comparison import ARMS, cases, report
 

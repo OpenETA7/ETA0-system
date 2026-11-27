@@ -5,6 +5,7 @@ import fcntl
 import hashlib
 import json
 import math
+import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
@@ -14,10 +15,12 @@ from types import SimpleNamespace
 
 if __package__:
     from . import libero40 as batch
-    from .serve import MODEL, TARGET
 else:
     import libero40 as batch
-    from serve import MODEL, TARGET
+
+MODEL = os.environ.get("ETA0_SERVED_MODEL", "eta0-27b")
+TARGET = os.environ.get("ETA0_MODEL_PATH", "OpenETA7/ETA0-27B-PLACEHOLDER")
+DRAFT = os.environ.get("ETA0_DFLASH_DRAFT", "OpenETA7/ETA0-27B-DFlash2-PLACEHOLDER")
 
 ROOT = Path(__file__).resolve().parents[1]
 STATES = ROOT / "experiments/libero40-progress-states.json"
@@ -46,7 +49,7 @@ def manifest():
         model=MODEL,
         target=TARGET,
         libero_commit="8f1084e3132a39270c3a13ebe37270a43ece2a01",
-        draft="/mnt/model/Qwen3.8-27B-DFlash2",
+        draft=DRAFT,
         mode="base",
         instruction_mode="revised",
         pack_sha256=PACK,

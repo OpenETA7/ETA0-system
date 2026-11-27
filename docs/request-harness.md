@@ -49,26 +49,23 @@ python deploy/build_demo_library.py --output /path/to/new-library \
 
 每条无效回复的原因记录在 `preparation_invalid`，每次兜底记录为 `preparation_fallback`，最终回执的 `preparation_fallbacks` 是实际兜底轮数。评测按环境原生完成情况给兜底请求计分。模型标识校验等其他准备错误仍记为 `preparation_error`。
 
-## 云端两组配对比较
+## 多副本配对比较
 
-四个套件各取全部 10 项任务、初态索引 5，每组 40 个请求。从旧实验 27B-only 关闭查询组的初态 0–4 中，按初态索引为每个任务取首条原生成功轨迹。每项测试显式排除同任务示例。两组共享每一对的 27B 副本、种子、revised 指令、进度查询和两轮预算。双系统固定 Boyue 的 `kimi-k3.1-pro`，基线关闭三个上层功能。可以先预览，再加 `--submit` 提交 0 GPU 的 CPU 仿真作业。
+四个套件各取全部 10 项任务、初态索引 5，每组 40 个请求。从基线实验的初态 0–4 中按初态索引为每个任务取首条原生成功轨迹构建冻结示例库，每项测试显式排除同任务示例。两组共享每一对的 27B 副本、种子、revised 指令、进度查询和两轮预算；基线关闭三个上层功能。
+
+在已启动多个 27B 副本（由 [deploy/serve_vllm.py](../deploy/serve_vllm.py) 生成 `client.json`）后，直接运行 `deploy/request_comparison.py`：
 
 ```bash
-root=/root/tests/inference/eta0-system/cpu-remote-cc57436d67
-python deploy/boyue_episode.py --request-comparison \
-  --config ~/.config/robodojo/boyue-multimodel.json \
-  --remote-client "$root/replica-1/client.json" --remote-client "$root/replica-2/client.json" \
-  --remote-client "$root/replica-3/client.json" --remote-client "$root/replica-4/client.json"
+export ETA0_DEMO_ARCHIVE=/path/to/baseline-archive
+python3 deploy/request_comparison.py \
+  --boyue-config /path/to/private/upper.json \
+  --remote-client /path/to/replica-1/client.json \
+  --remote-client /path/to/replica-2/client.json \
+  --output /path/to/batch
 ```
 
-若开发机可通过 SSH 访问该作业的共享卷，可追加 `--shared-ssh /path/to/ssh-wrapper`。作业把临时公钥写入本次作业目录，提交端通过 SSH 交付密文，私钥仅在 CPU 容器中使用。
+报告先核对任务定义、初态、首帧和语义包哈希，再统计首轮及最终成功率、逐初态转胜或转败、调用、示例采用和耗时。无人回答的澄清列为未完成请求；服务故障列为未评分。可在已有结果目录执行 `python3 deploy/request_comparison.py --report --output /path/to/batch`。每项任务仅测试一个留出初态，逐任务转胜或转败是单个案例。
 
-使用独立计费的 Moonshot 开放平台时，将上述命令的配置参数替换为 `--config ~/.config/robodojo/official-api.json --config-profile kimi`。提交器只读取所选账户，按该配置的模型 ID 校验实际响应。实验清单记录 API 地址和模型 ID，恢复同一批请求时会核对这两项。
+若批量作业被中断，可沿用相同副本顺序和配置，追加 `--resume-from <原 batch 目录>` 恢复：恢复流程会校验冻结代码与示例库摘要，保留已评分的成功与失败请求，将未完成请求从同一初态重跑并将半条轨迹归档到 `batch/interrupted/`。
 
-若批量评测网关仅在 Mac 上可达，可在命名配置下追加 `--mac-preparation --shared-ssh /path/to/ssh-wrapper`。Mac 进程须在实验期间保持运行。CPU 作业通过本次作业的私有共享目录交换双图准备请求，Mac 只向所选网关和模型发送这些请求，直连时跳过系统代理。网关密钥留在 Mac。启动时会从仿真区用一组归档图像验证交接，预检结果位于 `batch/upper-preflight.json`。正式请求的上层用时包含两端的传输和等待。
-
-作业从旧轨迹重新构建冻结库，保存版本摘要。报告先核对任务定义、初态、首帧和语义包哈希，再统计首轮及最终成功率、逐初态转胜或转败、调用、示例采用和耗时。无人回答的澄清列为未完成请求；服务故障列为未评分。可在已有结果目录执行 `python deploy/request_comparison.py --report --output /path/to/batch`。每项任务仅测试一个留出初态，逐任务转胜或转败是单个案例。
-
-若 CPU 作业被抢占，先通过调度器确认其已终止。沿用上述命令的副本顺序和配置，追加 `--resume-job <已终止的作业 ID> --resume-from <首个执行作业的 batch 绝对路径> --submit`。恢复作业校验冻结的执行代码和示例库，保留已经评分的成功与失败请求。尚未完成的请求从同一初态重跑，上次轨迹归档到本次作业的 `batch/interrupted/`。汇总仍在最初的 `batch/` 目录；中断前的资源消耗单列。
-
-报告同时给出两种分母。原生评分对照要求双方都取得评分；用户请求完成率计入已明确返回的准备阶段失败。云端抢占造成的半条轨迹归档后重跑，同一请求的终态只计一次。
+报告同时给出两种分母。原生评分对照要求双方都取得评分；用户请求完成率计入已明确返回的准备阶段失败。中断造成的半条轨迹归档后重跑，同一请求的终态只计一次。

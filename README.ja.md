@@ -89,41 +89,21 @@ uv pip install -e '.[dev]'
 .venv/bin/python -m pytest -q
 ```
 
-## YICloud での LIBERO エピソード実行（社内クラスタ向け）
+## 詳細 CLI とマルチモード評価
 
-サービス名は `eta0-system-fullmix-2500` です。画像カナリア検証完了後に `ETA0_READY` が出力され、`client_file` が共有 GPFS 上の接続ファイルを指します：
+27B 単体の `--mode base` や旧来の `--mode teacher` / `--mode judge` を直接実行する場合は、[deploy/serve_vllm.py](deploy/serve_vllm.py) が生成した（または手動作成した）`client.json` を指定します：
 
 ```bash
-export ETA0_EXECUTOR_CLIENT=/root/tests/inference/eta0-system/cpu-remote-cc57436d67/replica-1/client.json
+export ETA0_EXECUTOR_CLIENT=/path/to/private/client.json
 python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode base --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-base
 ```
 
-旧来の `teacher` / `judge` モードでは、`ETA0_UPPER_BASE_URL`（末尾 `/v1`）、`ETA0_UPPER_MODEL`、`ETA0_UPPER_API_KEY` を通じてマルチ画像対応エンドポイントを指定します：
+上位マルチモーダルモデルを環境変数で指定する場合は、`ETA0_UPPER_BASE_URL`（末尾 `/v1`）、`ETA0_UPPER_MODEL`、`ETA0_UPPER_API_KEY` を設定します（または [examples/upper.example.json](examples/upper.example.json) 形式の JSON ファイルを使用）。上位 API の一時障害（タイムアウト・切断・HTTP 408/429/5xx）は同一フレーム上で最大 4 回リトライし、その間ロボットは静止します：
 
 ```bash
 python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode teacher --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-teacher
 ```
 
-`--planner` / `--supervisor` / `--teacher`（および `--no-*`）の組み合わせや `--instruction`、`--recover-length` の詳細は[接続ガイド](docs/executor-led.md)を参照してください。
-
-## Mac から Boyue 経由で teacher 検証を起動
-
-ローカルで以下を実行すると 0 GPU の LIBERO クライアントジョブをプレビューできます（`--submit` 追加で投入）。一時公開鍵で認証情報を暗号化して受け渡すため、復号済み設定は CPU コンテナ内の一時ディレクトリにのみ存在します：
-
-```bash
-python3 deploy/boyue_episode.py --task 3 --initial-index 0
-```
-
-上位 API の一時障害（タイムアウト・切断・HTTP 408/429/5xx）は同一フレーム上で最大 4 回リトライし、その間ロボットは静止します。
-
-## LIBERO 40 タスク対照評価・クラスタ配備
-
-- **LIBERO-40 対照評価**（8 GPU ノード上の 4 × TP2 レプリカ、計 80 エピソード）：[docs/libero40.md](docs/libero40.md) を参照。
-- **クラスタ配備と確認**：`deploy/submit.py` は単一レプリカジョブをプレビューします（`--submit` で投入）。詳細は [deploy/serve.py](deploy/serve.py) を参照。
-
-```bash
-python3 deploy/submit.py
-yicloud workspace get ws-8359c2f5cfd7da75 --project fdj-infra --zone-id cn-shanghai-a
-```
+`--planner` / `--supervisor` / `--teacher`（および `--no-*`）の組み合わせや `--instruction`、`--recover-length`、LIBERO-40 対照評価の詳細は[接続ガイド](docs/executor-led.md)と[LIBERO-40 評価ガイド](docs/libero40.md)を参照してください。他のベンチマークも `harness.run(benchmark, policy, ...)` から直接統合できます。

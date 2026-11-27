@@ -15,9 +15,16 @@ from statistics import mean
 
 SUITES = ("libero_spatial", "libero_object", "libero_goal", "libero_10")
 MODEL = "kimi-k3.1-pro"
-EXECUTOR = "eta0-system-fullmix-2500"
-ARCHIVE = Path("/root/tests/inference/eta0-system/progress-query-20261123")
+EXECUTOR = os.environ.get("ETA0_SERVED_MODEL", "eta0-27b")
+ARCHIVE = Path(os.environ["ETA0_DEMO_ARCHIVE"]) if os.environ.get("ETA0_DEMO_ARCHIVE") else None
 ARMS = ("baseline", "dual")
+
+
+def _sim_python():
+    plan_path = os.environ.get("ETA0_RUNTIME_PLAN")
+    if plan_path and Path(plan_path).is_file():
+        return read(Path(plan_path))["stages"]["libero"]["python"]
+    return os.environ.get("ETA0_SIM_PYTHON") or sys.executable
 
 
 def read(path):
@@ -327,11 +334,14 @@ def launch(args, lib, index, suite, task, arm):
         "360",
         "--upper-wall-seconds",
         "900",
-        "--libero-source-root",
-        str(ARCHIVE / "LIBERO"),
         "--output",
         str(out),
     ]
+    libero_root = os.environ.get("ETA0_LIBERO_ROOT") or (
+        str(ARCHIVE / "LIBERO") if ARCHIVE is not None else None
+    )
+    if libero_root:
+        cmd.extend(["--libero-source-root", libero_root])
     if arm == "dual":
         cmd += [
             "--clarify",
@@ -454,10 +464,9 @@ def check_relay(profile_path, receipt):
 def execute(args):
     source = args.target.parent / "source"
     if args.upper_transport == "mac_relay":
-        plan = read(Path("/root/tests/inference/libero10-text-compact-20261119/plan.json"))
         subprocess.run(
             [
-                plan["stages"]["libero"]["python"],
+                _sim_python(),
                 "-c",
                 "import sys; from pathlib import Path; "
                 "from deploy.request_comparison import check_relay; "
@@ -490,8 +499,9 @@ def execute(args):
         if hashlib.sha256(lib.read_bytes()).hexdigest() != manifest["library_sha256"]:
             raise ValueError("demo library changed before resume")
     else:
-        plan = read(Path("/root/tests/inference/libero10-text-compact-20261119/plan.json"))
-        python = plan["stages"]["libero"]["python"]
+        if ARCHIVE is None:
+            raise ValueError("set ETA0_DEMO_ARCHIVE to the baseline archive directory")
+        python = _sim_python()
         demos = []
         for suite, task in cases():
             for initial in range(5):

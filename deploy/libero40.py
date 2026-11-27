@@ -68,9 +68,7 @@ def ready(client):
     req = urllib.request.Request(profile["base_url"] + "/models")
     req.add_unredirected_header("Authorization", "Bearer " + profile["api_key"])
     with http.open(req, timeout=10) as response:
-        if profile["model"] != "eta0-system-fullmix-2500" or profile["model"] not in {
-            m["id"] for m in json.load(response)["data"]
-        }:
+        if profile["model"] not in {m["id"] for m in json.load(response)["data"]}:
             raise RuntimeError("unexpected executor model")
 
 
@@ -100,22 +98,33 @@ def start_replicas(root, existing, stack, replicas):
         raise RuntimeError(f"expected {expected} distinct GPUs, found {len(gpu_ids)}")
     clients = [existing] if existing else []
     workers = []
+    model_path = os.environ.get("ETA0_MODEL_PATH")
+    if expected and not model_path:
+        raise RuntimeError("set ETA0_MODEL_PATH to launch local TP2 replicas")
+    draft_path = os.environ.get("ETA0_DFLASH_DRAFT")
     for i in range(expected // 2):
         session = root / f"replica-{i + 1}"
         session.mkdir()
         client = session / "client.json"
         devices = ",".join(gpu_ids[2 * i : 2 * i + 2])
         log = stack.enter_context((session / "startup.log").open("w"))
+        cmd = [
+            sys.executable,
+            "-u",
+            str(HERE / "serve_vllm.py"),
+            "--model",
+            model_path,
+            "--tensor-parallel-size",
+            "2",
+            "--session-dir",
+            str(session),
+            "--port",
+            str(18800 + 10 * i),
+        ]
+        if draft_path:
+            cmd.extend(["--draft", draft_path])
         proc = subprocess.Popen(
-            [
-                sys.executable,
-                "-u",
-                str(HERE / "serve.py"),
-                "--session",
-                str(session),
-                "--port",
-                str(18800 + 10 * i),
-            ],
+            cmd,
             env={**os.environ, "CUDA_VISIBLE_DEVICES": devices},
             stdout=log,
             stderr=subprocess.STDOUT,

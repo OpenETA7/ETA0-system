@@ -1,55 +1,7 @@
-import ast
-import base64
-import io
 import json
 import sys
-import zipfile
 
-from deploy import boyue_episode, compare_upper
-
-
-def test_cloud_request_packages_three_models_without_credential(tmp_path, monkeypatch):
-    profile = tmp_path / "config.json"
-    profile.write_text(
-        json.dumps({"base_url": "https://example.invalid/v1", "api_key": "test-secret"})
-    )
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "submit",
-            "--libero40",
-            "--compare-models",
-            "m1",
-            "m2",
-            "m3",
-            "--initial-count",
-            "5",
-            "--remote-client",
-            "/root/client.json",
-            "--config",
-            str(profile),
-        ],
-    )
-
-    def check_job(cli, name, program, **kwargs):
-        assert not kwargs["submit"] and kwargs["cpu_workers"] == 4
-        options = ast.literal_eval(program.splitlines()[0].removeprefix("options = "))
-        assert options["entrypoint"] == "deploy/compare_upper.py"
-        assert options["episode_args"][-6:] == [
-            "--models",
-            "m1",
-            "m2",
-            "m3",
-            "--initial-count",
-            "5",
-        ]
-        assert "test-secret" not in program
-        with zipfile.ZipFile(io.BytesIO(base64.b64decode(options["source"]))) as bundle:
-            assert options["entrypoint"] in bundle.namelist()
-
-    monkeypatch.setattr(boyue_episode, "create_job", check_job)
-    boyue_episode.main()
+from deploy import compare_upper
 
 
 def test_five_state_schedule_has_one_matching_block_per_task():

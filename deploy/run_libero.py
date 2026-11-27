@@ -6,13 +6,12 @@ import sys
 from pathlib import Path
 
 repo = Path(__file__).resolve().parents[1]
-legacy = Path("/root/tests/inference/libero10-text-compact-20261119/plan.json")
 env = os.environ.copy()
 python = sys.executable
 paths = [str(repo)]
 plan = env.get("ETA0_RUNTIME_PLAN")
-if plan or (legacy.is_file() and not env.get("ETA0_SIM_PYTHON")):
-    file = Path(plan) if plan else legacy
+if plan:
+    file = Path(plan)
     stage = json.loads(file.read_text())["stages"]["libero"]
     env.update(stage["environment"])
     paths.extend([str(file.resolve().parent / "source"), stage["physics_root"]])

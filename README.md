@@ -89,41 +89,21 @@ uv pip install -e '.[dev]'
 .venv/bin/python -m pytest -q
 ```
 
-## Running on YICloud (Internal Cluster)
+## Advanced CLI & Multi-Mode Evaluation
 
-The pinned service name is `eta0-system-fullmix-2500`. After visual canary verification, the launcher prints `ETA0_READY` with `client_file` pointing to the replica's private connection file on shared GPFS:
+To invoke the LIBERO runner directly (e.g., 27B-only `base` mode or legacy `teacher` / `judge` advisory modes), pass any private `client.json` produced by [deploy/serve_vllm.py](deploy/serve_vllm.py) or your own OpenAI-compatible 27B endpoint:
 
 ```bash
-export ETA0_EXECUTOR_CLIENT=/root/tests/inference/eta0-system/cpu-remote-cc57436d67/replica-1/client.json
+export ETA0_EXECUTOR_CLIENT=/path/to/private/client.json
 python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode base --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-base
 ```
 
-Legacy `teacher` / `judge` modes accept a multi-image Chat Completions endpoint via `ETA0_UPPER_BASE_URL` (ending in `/v1`), `ETA0_UPPER_MODEL`, and `ETA0_UPPER_API_KEY`:
+For upper multimodal models via environment variables, provide `ETA0_UPPER_BASE_URL` (ending in `/v1`), `ETA0_UPPER_MODEL`, and `ETA0_UPPER_API_KEY` (or pass `--boyue-config /path/to/upper.json` matching [examples/upper.example.json](examples/upper.example.json)). Transient upper-API failures (timeouts, disconnects, HTTP 408/429/5xx) retry up to 4 times on the exact same frames while the robot remains stationary:
 
 ```bash
 python3 deploy/run_libero.py --executor-client "$ETA0_EXECUTOR_CLIENT" \
   --mode teacher --suite libero_10 --task 3 --initial-index 0 --output /tmp/eta0-bowl-teacher
 ```
 
-Use `--planner`, `--supervisor`, `--teacher` (and `--no-*`) to compose legacy advisory roles, `--instruction` to override wording, and `--recover-length` to attempt one direct generation after truncated thinking. See [docs/executor-led.md](docs/executor-led.md) for simulator environment wiring.
-
-## Launching a Teacher Trial from Mac via Boyue
-
-Preview a 0-GPU LIBERO client job (add `--submit` to dispatch), encrypting credentials with the job's ephemeral public key so plaintext secrets exist only in the CPU container's local temp directory:
-
-```bash
-python3 deploy/boyue_episode.py --task 3 --initial-index 0
-```
-
-Transient upper-API failures (timeouts, disconnects, HTTP 408/429/5xx) retry up to 4 times on the exact same frames while the robot remains stationary.
-
-## Paired LIBERO-40 Evaluation & Cluster Deployment
-
-- **LIBERO-40 Paired Eval** (4 × TP2 replicas on an 8-GPU node, 80 episodes total): see [docs/libero40.md](docs/libero40.md).
-- **Cluster Serving & Audit**: `deploy/submit.py` previews an independent single-replica job (`--submit` to launch); serving details live in [deploy/serve.py](deploy/serve.py).
-
-```bash
-python3 deploy/submit.py
-yicloud workspace get ws-8359c2f5cfd7da75 --project fdj-infra --zone-id cn-shanghai-a
-```
+Use `--planner`, `--supervisor`, `--teacher` (and `--no-*`) to compose legacy advisory roles, `--instruction` to override wording, and `--recover-length` to attempt one direct generation after truncated thinking. See [docs/executor-led.md](docs/executor-led.md) and [docs/libero40.md](docs/libero40.md) for simulator environment wiring and paired 40-task evaluation. Other benchmarks can integrate directly via `harness.run(benchmark, policy, ...)`.

@@ -4,7 +4,7 @@
 
 ## 用哪类失败检验系统
 
-11 月 18 日的测评表记录了 LIBERO 239/400、LIBERO-Pro 559/1000、RoboCasa Cosmos 61/240。VLABench 的模型 rollout 为 0/960。LIBERO 内部，object 为 85/100，10 为 41/100。长任务也有 10/10 的“开炉并放上摩卡壶”，而“黑碗放进最下层抽屉再关抽屉”为 1/10，“黄白杯放进微波炉再关门”为 0/10。首轮应检查子目标交接、相似对象指代和最后一个状态变化。失败原因需要逐帧标注。[原始测评与 trial 清单](https://sii-czxy.feishu.cn/docx/Lgz5drlp2oPxoBxQ7J0cfoV9nag)
+11 月 18 日的测评表记录了 LIBERO 239/400、LIBERO-Pro 559/1000、RoboCasa Cosmos 61/240。VLABench 的模型 rollout 为 0/960。LIBERO 内部，object 为 85/100，10 为 41/100。长任务也有 10/10 的“开炉并放上摩卡壶”，而“黑碗放进最下层抽屉再关抽屉”为 1/10，“黄白杯放进微波炉再关门”为 0/10。首轮应检查子目标交接、相似对象指代和最后一个状态变化。失败原因需要逐帧标注。
 
 ## 一次 episode 如何执行
 
@@ -28,19 +28,19 @@
 
 | 项 | 部署配置 |
 | --- | --- |
-| 主模型 | `/mnt/share/yfzhang/training-mixture/exports/fullmix-qwen38-27b-step2500-20261117/hf` |
-| Draft | `/root/tests/inference/dflash2-qwen38-27b-fullmix-step2500-20261117/finetuned-dflash2` |
-| 服务 | 单 Pod、两张 GPU、BF16、TP2、vLLM 0.33.0、DFlash 的 speculative tokens 为 7，最多两个并发序列 |
+| 主模型 | ETA0-27B (`fullmix step2500`) |
+| Draft | ETA0-27B-DFlash2 |
+| 服务 | 单节点、双 GPU（TP2）或单卡 RTX 5090、BF16/量化、vLLM、DFlash speculative tokens 为 7，最多两个并发序列 |
 | 执行采样 | temperature 0.8、top_p 0.95、top_k 20、repetition_penalty 1.08、presence_penalty 0 |
-| 运行时 | 使用冻结的 LIBERO text-compact 评测计划定位 serving runtime 和仿真 runtime，代码与推理缓存按独立副本隔离 |
+| 运行时 | 使用冻结的 LIBERO 仿真环境与 [deploy/serve_vllm.py](../deploy/serve_vllm.py) 通用启动器 |
 
-先固定上述参数做系统消融。随后固定任务和并发，只改变复核间隔（1、3、5 个动作），记录错误子目标推进率、首次偏差至停止的动作数、闭源调用费用和 episode 时延。DFlash 自身的加速需要相同输入、目标模型和并发下的 target-only 配对计时，分别报告 prefill、decode、draft 接受率和每成功任务 GPU 分钟。[原模型适配记录](https://github.com/OpenETA7/ETA0-training/blob/658ec3ec975be54411c604c011dd464bd521d565/docs/dflash2-qwen27b-fullmix2500-20261117.md)
+先固定上述参数做系统消融。随后固定任务和并发，只改变复核间隔（1、3、5 个动作），记录错误子目标推进率、首次偏差至停止的动作数、闭源调用费用和 episode 时延。DFlash 自身的加速需要相同输入、目标模型和并发下的 target-only 配对计时，分别报告 prefill、decode、draft 接受率和每成功任务 GPU 分钟。
 
-## 2026-11-20 云端验收
+## 2026-11-20 端到端验收记录
 
-独立 GPU 作业 `j-1795160878-602322` 通过带鉴权的 512×512 图像请求。另一台 CPU 节点也通过 Pod 网络读到了同一模型。两次原生冒烟都使用 libero_10 任务 03、初始状态 0、环境 seed 1234，限 1 个动作、6 次调用。第一次六次输出均被截断，0 次派发。第二次启用截断恢复，按顺序完成两次视觉查询、拒绝一次截断输出，然后派发 move_to，控制器实测执行 30 ticks，以 action_budget 结束。两次原生目标均未达成。两轮生成采样种子设置存在差异，此处验证恢复路径及动作接线，能力增益需另做配对评测。
+独立 GPU 服务通过带鉴权的 512×512 图像请求，远端 CPU 仿真节点也通过网络读到了同一模型。两次原生冒烟都使用 libero_10 任务 03、初始状态 0、环境 seed 1234，限 1 个动作、6 次调用。第一次六次输出均被截断，0 次派发。第二次启用截断恢复，按顺序完成两次视觉查询、拒绝一次截断输出，然后派发 move_to，控制器实测执行 30 ticks，以 action_budget 结束。两次原生目标均未达成。两轮生成采样种子设置存在差异，此处验证恢复路径及动作接线，能力增益需另做配对评测。
 
-原始输出位于 `/root/tests/inference/eta0-system/` 下的 `native-smoke-1795161712457092226`（原始）与 `native-smoke-1795161998400138055`（恢复）。各自的 `episode/rollout/events.jsonl` 和 `RESULT.json` 记录所有模型回复与动作；控制器报告位于 `episode/simulation/controller.jsonl`。上层三个角色已通过脚本化集成测试，本轮云端试验使用 27B executor。
+各自的 `episode/rollout/events.jsonl` 和 `RESULT.json` 记录所有模型回复与动作；控制器报告位于 `episode/simulation/controller.jsonl`。上层三个角色已通过脚本化集成测试，本轮试验使用 27B executor。
 
 ## 怎样判断系统有提升
 
@@ -51,12 +51,12 @@
 
 基座固定于 `cd6fcd91d19472ce24ea4dbd226930bafbf907c5`。原生 LIBERO adapter 使用训练仓的 `658ec3ec975be54411c604c011dd464bd521d565` 评测发布。[基座分支](https://github.com/OpenETA7/minimal-robot-harness/tree/eval-text-compact) · [原生 adapter](https://github.com/OpenETA7/ETA0-training/blob/658ec3ec975be54411c604c011dd464bd521d565/scripts/inference/rollout_libero_minimal.py)
 
-## Boyue 上层模型联调
+## 上层视觉模型联调记录
 
-2026-11-20 使用 Boyue 当前密钥可见的 `deepseek-v4.1-flash-1017`，完成了双图输入探测，以及真实 LIBERO-10 任务 03、初始状态 0、seed 1234 的 planner、teacher 和 supervisor 调用。响应中的模型名与本机配置一致。
+2026-11-20 使用多图商用端点完成了双图输入探测，以及真实 LIBERO-10 任务 03、初始状态 0、seed 1234 的 planner、teacher 和 supervisor 调用。响应中的模型名与配置 allowlist 一致。
 
-首次作业 `j-1795172730-215178` 生成计划和语义示范，执行 6 段 move_to，共 130 个控制 tick。监督者把“observation-006 wrist view: …”作为一整个证据标签，导致引用校验失败，原生任务没有得到最终评分。修复后，系统将允许的帧标签和最新帧标签单独传给监督者。遇到无效引用会在同一观测上要求修正，最多两次，修正完成前保持机器人静止。完整回复和每次拒绝均写入审计。
+首次联调生成计划和语义示范，执行 6 段 move_to，共 130 个控制 tick。监督者把“observation-006 wrist view: …”作为一整个证据标签，导致引用校验失败，原生任务没有得到最终评分。修复后，系统将允许的帧标签和最新帧标签单独传给监督者。遇到无效引用会在同一观测上要求修正，最多两次，修正完成前保持机器人静止。完整回复和每次拒绝均写入审计。
 
-同初始状态复验作业 `j-1795173470-915336` 执行 3 段 move_to，共 100 个控制 tick。监督者引用本轮提供的 `observation-003`，接受了“夹爪移到黑碗上方”子任务。此后第 4 次上层调用请求 teacher 为抓碗生成示范，等待约 600 秒后发生 HTTPS 读取超时。YICloud 于 2026-11-20 20:30:40（东京时间）将作业标为 Failed，episode 未生成 `rollout/RESULT.json`。本次记为上层服务调用中断，原生任务成功率统计中单列。运行目录为 `/root/tests/inference/eta0-system/boyue-teacher-aa611b395d5cd433/episode`。
+同初始状态复验执行 3 段 move_to，共 100 个控制 tick。监督者引用本轮提供的 `observation-003`，接受了“夹爪移到黑碗上方”子任务。此后第 4 次上层调用请求 teacher 为抓碗生成示范，等待约 600 秒后发生 HTTPS 读取超时导致中断，记为上层服务调用中断，原生任务成功率统计中单列。
 
-加入传输重试后，本地双子任务回归在第二次 teacher 生成示范时依次注入读取超时和 HTTP 503。第三次请求携带相同图像和任务上下文，随后 episode 完成，两个动作各执行一次。另用仓库内的 LIBERO 腕部图及其 TCP 叠图从 Mac 实调 Boyue，`deepseek-v4.1-flash-1017` 在 11.2 秒内返回了通过格式校验的 3 步示范。
+加入传输重试后，本地双子任务回归在第二次 teacher 生成示范时依次注入读取超时和 HTTP 503。第三次请求携带相同图像和任务上下文，随后 episode 完成，两个动作各执行一次。

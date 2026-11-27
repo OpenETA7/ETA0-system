@@ -2,8 +2,6 @@
 
 `deploy/serve_vllm.py` 是面向外部与本地设备的通用启动器：无内网路径硬编码，自动探测本地 NVIDIA GPU 数量与显存、选择合适的张量并行度（TP）和上下文长度、执行 512×512 视觉 Canary 验收，并生成供 `deploy/first_run.py` 直接读取的私有 `client.json`。
 
-> **内部集群说明**：原有的 [deploy/serve.py](../deploy/serve.py) 保留用于 YiCloud 内部镜像与作业复现；外部机器、本地工作站与云端 GPU 实例请统一使用 `deploy/serve_vllm.py`。
-
 ## HuggingFace 模型权重（发布占位符）
 
 | 组件 | 作用 | HuggingFace 仓库（发布前替换为正式链接） |
